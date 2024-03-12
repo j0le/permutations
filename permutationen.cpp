@@ -8,7 +8,7 @@
 
 static void print_span(std::span<char> s){
     std::string_view view(s.data(), s.size());
-    std::print("{}\n",view);
+    std::print("|{}|\n",view);
 }
 
 static void print_permutation(std::span<char> all, std::span<char> filled, std::span<char> unfilled){
