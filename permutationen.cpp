@@ -7,6 +7,7 @@
 
 
 static void print_permutation_differently(std::string_view view){
+    std::print("{} - ", view);
     // Print permutations like in the book "Elementar(st)e Gruppentheorie" by Tobias Glosauer
     // Chapter 3 "Gruppen ohne Ende", Section 3.2 "Symetrische Gruppen", page 51
     assert(std::cmp_less_equal(view.size(), 'A'-'Z'+'\01'));
