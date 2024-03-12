@@ -6,8 +6,42 @@
 #include <cassert>
 
 
-static void print_span(std::span<char> s){
-    std::string_view view(s.data(), s.size());
+static void print_permutation_differently(std::string_view view){
+    // Print permutations like in the book "Elementar(st)e Gruppentheorie" by Tobias Glosauer
+    // Chapter 3 "Gruppen ohne Ende", Section 3.2 "Symetrische Gruppen", page 51
+    assert(std::cmp_less_equal(view.size(), 'A'-'Z'+'\01'));
+    auto found = std::make_unique<bool[]>(view.size());
+    for(std::size_t i = 0z; i < view.size(); ++i){
+        if(found[i]){
+            continue;
+        }
+        found[i] = true;
+        char current_letter = 'A'+i;
+        std::print("({}", current_letter);
+        size_t next_index = i;
+        while(true){
+            char next_letter = view[next_index];
+            if(next_letter < 'A' || next_letter > 'Z')
+                throw std::exception();
+            if (next_letter == current_letter)
+                break;
+            next_index = next_letter-'A';
+            if(next_index >= view.size())
+                throw std::exception();
+            found[next_index] = true;
+            std::print("{}", next_letter);
+        }
+        std::print(")");
+    }
+    std::print("\n");
+}
+static void print_permutation_differently(std::span<char> span){
+    std::string_view view(span.data(), span.size());
+    print_permutation_differently(view);
+}
+
+static void print_span(std::span<char> span){
+    std::string_view view(span.data(), span.size());
     std::print("|{}|\n",view);
 }
 
@@ -17,7 +51,8 @@ static void print_permutation(std::span<char> all, std::span<char> filled, std::
     assert(filled.empty() || (all.begin() == filled.begin()));
     assert(unfilled.empty() || (all.begin()+filled.size())==unfilled.begin());
     if (std::cmp_equal(unfilled.size(), 0)) {
-        print_span(filled);
+        //print_span(filled);
+        print_permutation_differently(filled);
         return;
     }
     char c = 'A';
@@ -124,8 +159,8 @@ bool print_ternary_permutation(std::uint32_t a, std::uint32_t b, std::uint32_t c
 }
 
 int main(){
-    //print_permutation(4);
+    print_permutation(4);
     //print_binary_permutation(10,5); // n over k, binomal coefficient
-    print_ternary_permutation(1,1,5);
+    //print_ternary_permutation(1,1,5);
     return 0;
 }
