@@ -1,0 +1,4 @@
+build/
+
+# folder crated by clangd
+.cache/
