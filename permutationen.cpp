@@ -86,8 +86,46 @@ bool print_binary_permutation(std::uint32_t places, std::uint32_t part){
     return true;
 }
 
+static void print_ternary_permutation(std::span<char> all, std::span<char> rest, std::size_t a, std::size_t b, std::size_t c){
+    if (rest.empty()){
+        print_span(all);
+        return;
+    }
+    assert(std::cmp_equal(rest.size(), a+b+c));
+    if(a > 0z){
+        rest[0] = 'a';
+        print_ternary_permutation(all, rest.subspan(1z), a-1z, b, c);
+    }
+    if(b > 0z){
+        rest[0] = 'B';
+        print_ternary_permutation(all, rest.subspan(1z), a, b-1z, c);
+    }
+    if(c > 0z){
+        rest[0] = ' ';
+        print_ternary_permutation(all, rest.subspan(1z), a, b, c-1z);
+    }
+}
+
+bool print_ternary_permutation(std::uint32_t a, std::uint32_t b, std::uint32_t c){
+    static_assert(sizeof(std::size_t) >= sizeof(std::uint32_t));
+    auto ab = a + b;
+    if(std::cmp_less(ab,a)){
+        return false; // overflow
+    }
+    auto abc = ab + c;
+    if(std::cmp_less(abc,ab)){
+        return false; // overflow
+    }
+    size_t sum = abc;
+    std::string str(abc, '\0');
+    std::span<char> span(str.data(), str.length());
+    print_ternary_permutation(span, span, a, b, c);
+    return true;
+}
+
 int main(){
     //print_permutation(4);
-    print_binary_permutation(10,5); // n over k, binomal coefficient
+    //print_binary_permutation(10,5); // n over k, binomal coefficient
+    print_ternary_permutation(1,1,5);
     return 0;
 }
