@@ -4,7 +4,55 @@
 #include <span>
 #include <utility>
 #include <cassert>
+#include <optional>
 
+static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
+
+static std::optional<size_t> letter_to_index(char c, std::size_t size){
+    if(c < 'A' || c > 'Z')
+        return std::nullopt;
+
+    std::size_t index = c-'A';
+    if(std::cmp_greater_equal(index, size))
+        return std::nullopt;
+    return std::make_optional(index);
+}
+
+static std::optional<char> index_to_char(size_t index, std::size_t size){
+    if(std::cmp_greater_equal(index, size))
+        return std::nullopt;
+
+    auto sum = 'A'+index;
+
+    static_assert(std::is_same_v<decltype(index), decltype(sum)>);
+    if(std::cmp_less(sum, index))
+        return std::nullopt; // overflow
+
+    typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
+        underlying_char_type;
+
+    underlying_char_type number_z = 'Z';
+    if(std::cmp_greater(sum, number_z))
+        return std::nullopt;
+    char c = sum;
+    return c;
+}
+
+static std::optional<std::string> apply_permutations_onto_another(std::string_view a, std::string_view b){
+    if(a.size() != b.size())
+        return std::nullopt;
+    std::size_t size = a.size();
+
+    std::string result(size, '\0');
+    for(std::size_t i = 0; i < size; ++i){
+        auto new_index_opt = letter_to_index(a[i], size);
+        if(!new_index_opt)
+            return std::nullopt;
+        auto new_index = *new_index_opt;
+        result[new_index] = b[i];
+    }
+    return result;
+}
 
 static void print_permutation_differently(std::string_view view){
     std::print("{} - ", view);
