@@ -1,12 +1,16 @@
 #include <cstddef>
 #include <cstdint>
 #include <print>
+#include <ranges>
 #include <span>
 #include <utility>
 #include <cassert>
 #include <optional>
+#include <numeric>
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
+typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
+    underlying_char_type;
 
 static std::optional<size_t> letter_to_index(char c, std::size_t size){
     if(c < 'A' || c > 'Z')
@@ -27,9 +31,6 @@ static std::optional<char> index_to_char(size_t index, std::size_t size){
     static_assert(std::is_same_v<decltype(index), decltype(sum)>);
     if(std::cmp_less(sum, index))
         return std::nullopt; // overflow
-
-    typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
-        underlying_char_type;
 
     underlying_char_type number_z = 'Z';
     if(std::cmp_greater(sum, number_z))
@@ -82,7 +83,6 @@ static void print_permutation_differently(std::string_view view){
         }
         std::print(")");
     }
-    std::print("\n");
 }
 static void print_permutation_differently(std::span<char> span){
     std::string_view view(span.data(), span.size());
@@ -94,6 +94,29 @@ static void print_span(std::span<char> span){
     std::print("|{}|\n",view);
 }
 
+
+static void print_all_powers(std::string_view view){
+    std::string str(view.size(), '\0');
+    str.assign_range(std::ranges::iota_view{'A'} | std::views::take(view.size()));
+    const std::string identity_permutation{str};
+
+    do{
+        auto string_opt = apply_permutations_onto_another(view,str);
+        if(!string_opt){
+            std::print("error");
+            break;
+        }
+        str = std::move(*string_opt); 
+        print_permutation_differently(std::string_view{str});
+        std::print(",  ");
+    }while(str != identity_permutation);
+}
+
+static void print_all_powers(std::span<char> span){
+    std::string_view view(span.data(), span.size());
+    return print_all_powers(view);
+}
+
 static void print_permutation(std::span<char> all, std::span<char> filled, std::span<char> unfilled){
     std::size_t sum = filled.size() + unfilled.size();
     assert(std::cmp_equal(sum, all.size()));
@@ -101,7 +124,9 @@ static void print_permutation(std::span<char> all, std::span<char> filled, std::
     assert(unfilled.empty() || (all.begin()+filled.size())==unfilled.begin());
     if (std::cmp_equal(unfilled.size(), 0)) {
         //print_span(filled);
-        print_permutation_differently(filled);
+        //print_permutation_differently(filled);
+        print_all_powers(filled);
+        std::println("");
         return;
     }
     char c = 'A';
@@ -208,8 +233,12 @@ bool print_ternary_permutation(std::uint32_t a, std::uint32_t b, std::uint32_t c
 }
 
 int main(){
+    //std::string murks = "BA";
+    //print_all_powers(std::string_view{murks});
+
     print_permutation(4);
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
+
     return 0;
 }
