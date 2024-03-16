@@ -117,16 +117,16 @@ static void print_all_powers(std::span<char> span){
     return print_all_powers(view);
 }
 
-static void print_permutation(std::span<char> all, std::span<char> filled, std::span<char> unfilled){
+typedef void (*call_back_t)(std::string_view);
+
+static void calc_permutation(call_back_t call_back, std::span<char> all, std::span<char> filled, std::span<char> unfilled){
     std::size_t sum = filled.size() + unfilled.size();
     assert(std::cmp_equal(sum, all.size()));
     assert(filled.empty() || (all.begin() == filled.begin()));
     assert(unfilled.empty() || (all.begin()+filled.size())==unfilled.begin());
     if (std::cmp_equal(unfilled.size(), 0)) {
-        //print_span(filled);
-        //print_permutation_differently(filled);
-        print_all_powers(filled);
-        std::println("");
+        std::string_view view(filled.data(), filled.size());
+        call_back(view);
         return;
     }
     char c = 'A';
@@ -151,7 +151,7 @@ static void print_permutation(std::span<char> all, std::span<char> filled, std::
         }
         assert(!found);
         unfilled[0] = c;
-        print_permutation(all, all.first(filled.size()+1), all.last(unfilled.size()-1));
+        calc_permutation(call_back, all, all.first(filled.size()+1), all.last(unfilled.size()-1));
         c++;
     }
 }
@@ -163,7 +163,15 @@ bool print_permutation(std::uint32_t places){
     }
     std::string str(places, '\0');
     std::span all(str.data(), str.length());
-    print_permutation(all, all.first(0), all);
+
+    auto print = [](std::string_view view)->void{
+        //print_span(filled);
+        //print_permutation_differently(filled);
+        print_all_powers(view);
+        std::println("");
+    };
+
+    calc_permutation(print, all, all.first(0), all);
     return true;
 }
 
