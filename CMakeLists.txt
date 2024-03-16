@@ -9,3 +9,4 @@ add_executable(permutationen
     )
 
 target_compile_features(permutationen PUBLIC cxx_std_23)
+target_compile_options(permutationen PRIVATE  -fcolor-diagnostics -fansi-escape-codes)
