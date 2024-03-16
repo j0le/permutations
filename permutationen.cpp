@@ -96,11 +96,15 @@ static void print_span(std::span<char> span){
     std::print("|{}|\n",view);
 }
 
+static std::string get_identity_permutation(std::size_t places){
+    std::string str(places, '\0');
+    str.assign_range(std::ranges::iota_view{'A'} | std::views::take(places));
+    return str;
+}
 
 static void print_all_powers(std::string_view view){
-    std::string str(view.size(), '\0');
-    str.assign_range(std::ranges::iota_view{'A'} | std::views::take(view.size()));
-    const std::string identity_permutation{str};
+    const std::string identity_permutation = get_identity_permutation(view.size());
+    std::string str = identity_permutation;
 
     do{
         auto string_opt = apply_permutations_onto_another(view,str);
@@ -184,7 +188,7 @@ Integer fakultät(const Integer numb){
     return result;
 }
 
-bool put_permutations_in_vector(std::uint32_t places){
+bool print_group_table(std::uint32_t places){
     const auto max_number_of_digits = 'Z'-'A'+1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
@@ -203,8 +207,39 @@ bool put_permutations_in_vector(std::uint32_t places){
     };
 
     calc_permutation(put_into_vector, all, all.first(0), all);
-    for(auto& perm : perms){
-        std::println("{}",perm);
+
+    auto print_row = [&](std::string_view perm) -> bool{
+        for(auto& perm_column : perms){
+            auto opt = apply_permutations_onto_another(perm,perm_column);
+            if(opt)
+                std::print(" {} |",*opt);
+            else
+                return false;
+        }
+        std::println("");
+        return true;
+    };
+
+    // print header of table
+    std::print(" {} |", std::string(places, ' '));
+    const auto identity = get_identity_permutation(places);
+    if(!print_row(identity))
+        return false;
+    const std::string bar(places, '-');
+    for(std::size_t i = 0; i <= number_of_permutations; ++i){
+        char sep = '+';
+        if(i == places){
+            sep = '|';
+        }
+        std::print("-{}-{}", bar, sep);
+    }
+    std::println("");
+
+    // print bulk of the table
+    for(auto& perm_row : perms){
+        std::print(" {} |", perm_row);
+        if(!print_row(std::string_view{perm_row}))
+            return false;
     }
     return true;
 }
@@ -279,7 +314,7 @@ int main(){
     //print_all_powers(std::string_view{murks});
 
     //print_permutation(4);
-    put_permutations_in_vector(4);
+    print_group_table(4);
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
 
