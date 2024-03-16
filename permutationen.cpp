@@ -7,6 +7,8 @@
 #include <cassert>
 #include <optional>
 #include <numeric>
+#include <vector>
+#include <functional>
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
 typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
@@ -117,9 +119,7 @@ static void print_all_powers(std::span<char> span){
     return print_all_powers(view);
 }
 
-typedef void (*call_back_t)(std::string_view);
-
-static void calc_permutation(call_back_t call_back, std::span<char> all, std::span<char> filled, std::span<char> unfilled){
+static void calc_permutation(std::function<void(std::string_view)> call_back, std::span<char> all, std::span<char> filled, std::span<char> unfilled){
     std::size_t sum = filled.size() + unfilled.size();
     assert(std::cmp_equal(sum, all.size()));
     assert(filled.empty() || (all.begin() == filled.begin()));
@@ -172,6 +172,40 @@ bool print_permutation(std::uint32_t places){
     };
 
     calc_permutation(print, all, all.first(0), all);
+    return true;
+}
+
+template<class Integer>
+Integer fakultät(const Integer numb){
+    Integer result = 1;
+    for(Integer i = 1; i <= numb; ++i){
+        result *= i;
+    }
+    return result;
+}
+
+bool put_permutations_in_vector(std::uint32_t places){
+    const auto max_number_of_digits = 'Z'-'A'+1z;
+    if (std::cmp_greater(places, max_number_of_digits)) {
+        return false;
+    }
+    std::string str(places, '\0');
+    std::span all(str.data(), str.length());
+
+    std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
+    std::println("number of permutations: {}", number_of_permutations);
+
+    std::vector<std::string> perms{};
+    perms.reserve(number_of_permutations);
+
+    auto put_into_vector = [&](std::string_view view){
+        perms.push_back(std::string{view});
+    };
+
+    calc_permutation(put_into_vector, all, all.first(0), all);
+    for(auto& perm : perms){
+        std::println("{}",perm);
+    }
     return true;
 }
 
@@ -244,7 +278,8 @@ int main(){
     //std::string murks = "BA";
     //print_all_powers(std::string_view{murks});
 
-    print_permutation(4);
+    //print_permutation(4);
+    put_permutations_in_vector(4);
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
 
