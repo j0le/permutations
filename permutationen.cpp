@@ -9,6 +9,7 @@
 #include <vector>
 #include <functional>
 #include <ranges>
+#include <algorithm>
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
 typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
@@ -299,14 +300,14 @@ bool print_group_table(std::uint32_t places, bool permute_table = false){
         if(!order_opt){
             return false;
         }
-        //std::size_t color = 360z * (order_opt.value()-1z) / number_of_permutations;
+        std::size_t color = 360z * (order_opt.value()-1z) / places;
         std::println(".{}{{\n"
                 "{}background-color: hsl( {}deg 75% 75% );\n"
                 "}}",
                 perm,
                 (first?"//":""),
-                i
-                //color
+                //i
+                color
             );
         first = false;
         i+=(360/number_of_permutations);
@@ -347,6 +348,23 @@ bool print_group_table(std::uint32_t places, bool permute_table = false){
         auto range_of_string_views = perms | std::views::transform([]<typename T>(T&& string) -> std::string_view{
                 return std::string_view{std::forward<T>(string)};
             });
+
+        auto vector_of_string_views = range_of_string_views | std::ranges::to<std::vector>();
+        std::ranges::sort(vector_of_string_views,
+                [](std::string_view a, std::string_view b)->bool{
+                    auto order_a_opt = get_order(a);
+                    auto order_b_opt = get_order(b);
+                    if(order_a_opt.has_value() && order_b_opt.has_value())
+                        return *order_a_opt < *order_b_opt;
+                    else if(order_a_opt.has_value() == order_b_opt.has_value())
+                        return false;
+                    else if(!order_a_opt.has_value())
+                        return true;
+                    else
+                        return false;
+                });
+        print_table(vector_of_string_views, places);
+        std::println("<br/><p>unsorted:</p>");
         print_table(range_of_string_views, places);
     }
 
@@ -443,7 +461,7 @@ int main(){
     std::string murks = "BCA";
     print_all_powers(stderr, std::string_view{murks});
 
-    if(!print_group_table(3, true)){
+    if(!print_group_table(4)){
         std::print(stderr, "error");
         return 1;
     }
