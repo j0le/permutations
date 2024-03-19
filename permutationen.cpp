@@ -264,7 +264,7 @@ static bool print_table(R perms, std::uint32_t places){
     return true;
 }
 
-bool print_group_table(std::uint32_t places){
+bool print_group_table(std::uint32_t places, bool permute_table = false){
     const auto max_number_of_digits = 'Z'-'A'+1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
@@ -314,7 +314,7 @@ bool print_group_table(std::uint32_t places){
     std::println("</style>");
     std::println("<p>number of permutations: {}</p>", number_of_permutations);
 
-    {
+    if(permute_table){
         assert(std::cmp_greater_equal(perms.size(), 1));
         std::string str(perms.size(), '\0');
         std::span all(str.data(), str.length());
@@ -342,6 +342,12 @@ bool print_group_table(std::uint32_t places){
         calc_permutation(permute_table_and_print, all, all.first(0), all);
         if(error)
             return false;
+    }
+    else{
+        auto range_of_string_views = perms | std::views::transform([]<typename T>(T&& string) -> std::string_view{
+                return std::string_view{std::forward<T>(string)};
+            });
+        print_table(range_of_string_views, places);
     }
 
     std::println("</body>\n</html>");
