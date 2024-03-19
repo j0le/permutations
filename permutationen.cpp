@@ -198,6 +198,49 @@ Integer fakultät(const Integer numb){
     return result;
 }
 
+bool print_table(std::vector<std::string> perms, std::uint32_t places){
+    auto print_cell = [](std::string_view perm, bool header = false) -> bool {
+        auto css_class = perm;
+        auto display_text_opt = get_other_permutation_representation(perm);
+        if(!display_text_opt) {
+            std::println(stderr, "this is the fucked up thing: {}", perm);
+            return false;
+        }
+        std::print("<td class=\"{}{}\">{}</td>", css_class, (header?" table_header":""), *display_text_opt);
+        return true;
+    };
+
+    auto print_row = [&](std::string_view perm, bool header_row = false) -> bool{
+        for(auto& perm_column : perms){
+            auto opt = apply_permutations_onto_another(perm,perm_column);
+            if(!opt || !print_cell(*opt, header_row)){
+                return false;
+            }
+        }
+        std::println("</tr>");
+        return true;
+    };
+
+
+    std::println("<table>");
+    // print header of table
+    std::print("<tr><td></td>");
+    const auto identity = get_identity_permutation(places);
+    if(!print_row(identity, true))
+        return false;
+
+    // print bulk of the table
+    for(auto& perm_row : perms){
+        std::print("<tr>");
+        print_cell(perm_row, true);
+        if(!print_row(std::string_view{perm_row}))
+            return false;
+    }
+    std::println("</table>");
+    std::println("</body>\n</html>");
+    return true;
+}
+
 bool print_group_table(std::uint32_t places){
     const auto max_number_of_digits = 'Z'-'A'+1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
@@ -242,46 +285,7 @@ bool print_group_table(std::uint32_t places){
     std::println("</style>");
     std::println("number of permutations: {}", number_of_permutations);
 
-    auto print_cell = [](std::string_view perm, bool header = false) -> bool {
-        auto css_class = perm;
-        auto display_text_opt = get_other_permutation_representation(perm);
-        if(!display_text_opt) {
-            std::println(stderr, "this is the fucked up thing: {}", perm);
-            return false;
-        }
-        std::print("<td class=\"{}{}\">{}</td>", css_class, (header?" table_header":""), *display_text_opt);
-        return true;
-    };
-
-    auto print_row = [&](std::string_view perm, bool header_row = false) -> bool{
-        for(auto& perm_column : perms){
-            auto opt = apply_permutations_onto_another(perm,perm_column);
-            if(!opt || !print_cell(*opt, header_row)){
-                return false;
-            }
-        }
-        std::println("</tr>");
-        return true;
-    };
-
-
-    std::println("<table>");
-    // print header of table
-    std::print("<tr><td></td>");
-    const auto identity = get_identity_permutation(places);
-    if(!print_row(identity, true))
-        return false;
-
-    // print bulk of the table
-    for(auto& perm_row : perms){
-        std::print("<tr>");
-        print_cell(perm_row, true);
-        if(!print_row(std::string_view{perm_row}))
-            return false;
-    }
-    std::println("</table>");
-    std::println("</body>\n</html>");
-    return true;
+    return print_table(perms, places);
 }
 
 static void print_binary_permutation(std::span<char> all, std::span<char> rest, std::size_t part){
