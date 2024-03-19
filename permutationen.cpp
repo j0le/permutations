@@ -112,6 +112,22 @@ static std::string get_identity_permutation(std::size_t places){
     return str;
 }
 
+static std::optional<std::size_t> get_order(std::string_view view){
+    const std::string identity_permutation = get_identity_permutation(view.size());
+    std::string str = identity_permutation;
+
+    std::size_t ret = 0;
+    do{
+        auto string_opt = apply_permutations_onto_another(view,str);
+        if(!string_opt){
+            return std::nullopt;
+        }
+        str = std::move(*string_opt);
+        ret+=1;
+    }while(str != identity_permutation);
+    return ret;
+}
+
 static void print_all_powers(std::string_view view){
     const std::string identity_permutation = get_identity_permutation(view.size());
     std::string str = identity_permutation;
@@ -207,8 +223,12 @@ bool print_table(std::vector<std::string_view> perms, std::uint32_t places){
             std::println(stderr, "this is the fucked up thing: {}", perm);
             return false;
         }
-        std::print("<td class=\"{1}{2}\" title=\"{3}\">{0}</td>",
-                *display_text_opt, css_class, (header?" table_header":""), hover_text);
+        auto order_opt = get_order(perm);
+        if(!order_opt){
+            return false;
+        }
+        std::print("<td class=\"{1}{2}\" title=\"{3}, order: {4}\">{0}</td>",
+                *display_text_opt, css_class, (header?" table_header":""), hover_text, *order_opt);
         return true;
     };
 
