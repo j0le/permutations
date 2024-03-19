@@ -313,8 +313,7 @@ bool print_group_table(std::uint32_t places){
 
     {
         assert(std::cmp_greater_equal(perms.size(), 1));
-        // (-1z) beause we only permute the elements, that are not the identity element.
-        std::string str(perms.size()-1z, '\0');
+        std::string str(perms.size(), '\0');
         std::span all(str.data(), str.length());
 
         bool error = false;
@@ -322,16 +321,15 @@ bool print_group_table(std::uint32_t places){
         auto permute_table_and_print = [&](std::string_view view){
             std::vector<std::string_view> new_order{};
             new_order.reserve(perms.size());
-            new_order.push_back(std::string_view{perms[0]});
-            assert(view.size()+1z == perms.size());
+            assert(view.size() == perms.size());
             for(char c : view){
                 auto index_opt = letter_to_index(c, view.size());
                 if(!index_opt){
                     error = true;
                     return;
                 }
-                auto shifted_index = *index_opt+1z;
-                new_order.push_back(std::string_view{perms[shifted_index]});
+                auto index = *index_opt;
+                new_order.push_back(std::string_view{perms[index]});
             }
             std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
             print_table(new_order,places);
