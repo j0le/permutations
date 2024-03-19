@@ -198,7 +198,7 @@ Integer fakultät(const Integer numb){
     return result;
 }
 
-bool print_table(std::vector<std::string> perms, std::uint32_t places){
+bool print_table(std::vector<std::string_view> perms, std::uint32_t places){
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto css_class = perm;
         auto hover_text = perm;
@@ -239,7 +239,6 @@ bool print_table(std::vector<std::string> perms, std::uint32_t places){
             return false;
     }
     std::println("</table>");
-    std::println("</body>\n</html>");
     return true;
 }
 
@@ -285,9 +284,42 @@ bool print_group_table(std::uint32_t places){
         i+=(360/number_of_permutations);
     }
     std::println("</style>");
-    std::println("number of permutations: {}", number_of_permutations);
+    std::println("<p>number of permutations: {}</p>", number_of_permutations);
 
-    return print_table(perms, places);
+    {
+        assert(std::cmp_greater_equal(perms.size(), 1));
+        // (-1z) beause we only permute the elements, that are not the identity element.
+        std::string str(perms.size()-1z, '\0');
+        std::span all(str.data(), str.length());
+
+        bool error = false;
+        size_t counter = 0;
+        auto permute_table_and_print = [&](std::string_view view){
+            std::vector<std::string_view> new_order{};
+            new_order.reserve(perms.size());
+            new_order.push_back(std::string_view{perms[0]});
+            assert(view.size()+1z == perms.size());
+            for(char c : view){
+                auto index_opt = letter_to_index(c, view.size());
+                if(!index_opt){
+                    error = true;
+                    return;
+                }
+                auto shifted_index = *index_opt+1z;
+                new_order.push_back(std::string_view{perms[shifted_index]});
+            }
+            std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
+            print_table(new_order,places);
+            counter++;
+        };
+
+        calc_permutation(permute_table_and_print, all, all.first(0), all);
+        if(error)
+            return false;
+    }
+
+    std::println("</body>\n</html>");
+    return true;
 }
 
 static void print_binary_permutation(std::span<char> all, std::span<char> rest, std::size_t part){
