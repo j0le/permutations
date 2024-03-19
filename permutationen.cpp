@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 #include <functional>
+#include <ranges>
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
 typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
@@ -213,7 +214,9 @@ Integer fakultät(const Integer numb){
     return result;
 }
 
-bool print_table(std::vector<std::string_view> perms, std::uint32_t places){
+template<std::ranges::range R>
+static bool print_table(R perms, std::uint32_t places){
+    static_assert(std::is_same_v<std::ranges::range_value_t<R>, std::string_view>);
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto css_class = perm;
         auto hover_text = perm;
@@ -232,7 +235,7 @@ bool print_table(std::vector<std::string_view> perms, std::uint32_t places){
     };
 
     auto print_row = [&](std::string_view perm, bool header_row = false) -> bool{
-        for(auto& perm_column : perms){
+        for(std::string_view perm_column : perms){
             auto opt = apply_permutations_onto_another(perm,perm_column);
             if(!opt || !print_cell(*opt, header_row)){
                 return false;
@@ -251,7 +254,7 @@ bool print_table(std::vector<std::string_view> perms, std::uint32_t places){
         return false;
 
     // print bulk of the table
-    for(auto& perm_row : perms){
+    for(std::string_view perm_row : perms){
         std::print("<tr>");
         print_cell(perm_row, true);
         if(!print_row(std::string_view{perm_row}))
