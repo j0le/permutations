@@ -57,11 +57,13 @@ static std::optional<std::string> apply_permutations_onto_another(std::string_vi
     return result;
 }
 
-static void print_permutation_differently(std::string_view view){
-    std::print("{} - ", view);
+static std::optional<std::string> get_other_permutation_representation(std::string_view view){
     // Print permutations like in the book "Elementar(st)e Gruppentheorie" by Tobias Glosauer
     // Chapter 3 "Gruppen ohne Ende", Section 3.2 "Symetrische Gruppen", page 51
-    assert(std::cmp_less_equal(view.size(), 'A'-'Z'+'\01'));
+    std::string ret{};
+    const constexpr auto diff = 'Z'-'A'+'\01';
+    static_assert(std::cmp_equal(26, diff));
+    assert(std::cmp_less_equal(view.size(), diff));
     auto found = std::make_unique<bool[]>(view.size());
     for(std::size_t i = 0z; i < view.size(); ++i){
         if(found[i]){
@@ -69,22 +71,30 @@ static void print_permutation_differently(std::string_view view){
         }
         found[i] = true;
         char current_letter = 'A'+i;
-        std::print("({}", current_letter);
+        ret += '(';
+        ret += current_letter;
         size_t next_index = i;
         while(true){
             char next_letter = view[next_index];
             if(next_letter < 'A' || next_letter > 'Z')
-                throw std::exception();
+                return std::nullopt;
             if (next_letter == current_letter)
                 break;
             next_index = next_letter-'A';
             if(next_index >= view.size())
-                throw std::exception();
+                return std::nullopt;
             found[next_index] = true;
-            std::print("{}", next_letter);
+            ret += next_letter;
         }
-        std::print(")");
+        ret += ')';
     }
+    return ret;
+}
+static void print_permutation_differently(std::string_view view){
+    auto opt = get_other_permutation_representation(view);
+    if(!opt)
+        throw std::exception();
+    std::print("{} - {}", view, *opt);
 }
 static void print_permutation_differently(std::span<char> span){
     std::string_view view(span.data(), span.size());
@@ -232,17 +242,23 @@ bool print_group_table(std::uint32_t places){
     std::println("</style>");
     std::println("number of permutations: {}", number_of_permutations);
 
-    auto print_cell = [](std::string_view perm, bool header = false) {
-        std::print("<td class=\"{}{}\">{}</td>", perm, (header?" table_header":""), perm);
+    auto print_cell = [](std::string_view perm, bool header = false) -> bool {
+        auto css_class = perm;
+        auto display_text_opt = get_other_permutation_representation(perm);
+        if(!display_text_opt) {
+            std::println(stderr, "this is the fucked up thing: {}", perm);
+            return false;
+        }
+        std::print("<td class=\"{}{}\">{}</td>", css_class, (header?" table_header":""), *display_text_opt);
+        return true;
     };
 
     auto print_row = [&](std::string_view perm, bool header_row = false) -> bool{
         for(auto& perm_column : perms){
             auto opt = apply_permutations_onto_another(perm,perm_column);
-            if(opt)
-                print_cell(*opt, header_row);
-            else
+            if(!opt || !print_cell(*opt, header_row)){
                 return false;
+            }
         }
         std::println("</tr>");
         return true;
@@ -338,7 +354,10 @@ int main(){
     //print_all_powers(std::string_view{murks});
 
     //print_permutation(4);
-    print_group_table(3);
+    if(!print_group_table(3)){
+        std::print(stderr, "error");
+        return 1;
+    }
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
 
