@@ -6,7 +6,6 @@
 #include <utility>
 #include <cassert>
 #include <optional>
-#include <numeric>
 #include <vector>
 #include <functional>
 
@@ -135,7 +134,7 @@ static void print_all_powers(std::string_view view){
     do{
         auto string_opt = apply_permutations_onto_another(view,str);
         if(!string_opt){
-            std::print("error");
+            std::println(stderr, "error");
             break;
         }
         str = std::move(*string_opt);
@@ -411,7 +410,6 @@ int main(){
     //std::string murks = "BA";
     //print_all_powers(std::string_view{murks});
 
-    //print_permutation(4);
     if(!print_group_table(3)){
         std::print(stderr, "error");
         return 1;
