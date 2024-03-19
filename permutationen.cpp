@@ -112,7 +112,7 @@ static void print_all_powers(std::string_view view){
             std::print("error");
             break;
         }
-        str = std::move(*string_opt); 
+        str = std::move(*string_opt);
         print_permutation_differently(std::string_view{str});
         std::print(",  ");
     }while(str != identity_permutation);
@@ -197,7 +197,6 @@ bool print_group_table(std::uint32_t places){
     std::span all(str.data(), str.length());
 
     std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
-    std::println("number of permutations: {}", number_of_permutations);
 
     std::vector<std::string> perms{};
     perms.reserve(number_of_permutations);
@@ -208,40 +207,60 @@ bool print_group_table(std::uint32_t places){
 
     calc_permutation(put_into_vector, all, all.first(0), all);
 
+    assert(number_of_permutations == perms.size());
+
+    std::println("<!DOCTYPE html>\n<html>\n<body>");
+
+    // Print CSS for colors
+    std::println("<style>");
+    int i = 0;
+    bool first = true;
+    for(auto& perm : perms){
+        std::println(".{}{{\n"
+                "{}background-color: hsl( {}deg 75% 75% );\n"
+                "}}",
+                perm,
+                (first?"//":""),
+                i
+            );
+        first = false;
+        i+=(360/number_of_permutations);
+    }
+    std::println("</style>");
+    std::println("number of permutations: {}", number_of_permutations);
+
+#define TD "<td class=\"{0}\">{0}</td>"
+
     auto print_row = [&](std::string_view perm) -> bool{
         for(auto& perm_column : perms){
             auto opt = apply_permutations_onto_another(perm,perm_column);
             if(opt)
-                std::print(" {} |",*opt);
+                std::print(TD,*opt);
             else
                 return false;
         }
-        std::println("");
+        std::println("</tr>");
         return true;
     };
 
+
+    std::println("<table>");
     // print header of table
-    std::print(" {} |", std::string(places, ' '));
+    std::print("<tr>" TD, std::string(places, ' '));
     const auto identity = get_identity_permutation(places);
     if(!print_row(identity))
         return false;
-    const std::string bar(places, '-');
-    for(std::size_t i = 0; i <= number_of_permutations; ++i){
-        char sep = '+';
-        if(i == places){
-            sep = '|';
-        }
-        std::print("-{}-{}", bar, sep);
-    }
-    std::println("");
 
     // print bulk of the table
     for(auto& perm_row : perms){
-        std::print(" {} |", perm_row);
+        std::print("<tr>" TD, perm_row);
         if(!print_row(std::string_view{perm_row}))
             return false;
     }
+    std::println("</table>");
+    std::println("</body>\n</html>");
     return true;
+#undef TD
 }
 
 static void print_binary_permutation(std::span<char> all, std::span<char> rest, std::size_t part){
