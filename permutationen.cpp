@@ -257,7 +257,7 @@ static bool print_table(R perms, std::uint32_t places){
     for(std::string_view perm_row : perms){
         std::print("<tr>");
         print_cell(perm_row, true);
-        if(!print_row(std::string_view{perm_row}))
+        if(!print_row(perm_row))
             return false;
     }
     std::println("</table>");
