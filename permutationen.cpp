@@ -52,7 +52,7 @@ static std::optional<std::string> apply_permutations_onto_another(std::string_vi
         if(!new_index_opt)
             return std::nullopt;
         auto new_index = *new_index_opt;
-        result[new_index] = b[i];
+        result[i] = b[new_index];
     }
     return result;
 }
