@@ -292,12 +292,18 @@ bool print_group_table(std::uint32_t places){
     int i = 0;
     bool first = true;
     for(auto& perm : perms){
+        auto order_opt = get_order(perm);
+        if(!order_opt){
+            return false;
+        }
+        //std::size_t color = 360z * (order_opt.value()-1z) / number_of_permutations;
         std::println(".{}{{\n"
                 "{}background-color: hsl( {}deg 75% 75% );\n"
                 "}}",
                 perm,
                 (first?"//":""),
                 i
+                //color
             );
         first = false;
         i+=(360/number_of_permutations);
