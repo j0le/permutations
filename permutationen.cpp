@@ -213,6 +213,9 @@ bool print_group_table(std::uint32_t places){
 
     // Print CSS for colors
     std::println("<style>");
+    std::println(".table_header{{\n"
+            "font-weight: bold;\n"
+            "}}");
     int i = 0;
     bool first = true;
     for(auto& perm : perms){
@@ -229,13 +232,15 @@ bool print_group_table(std::uint32_t places){
     std::println("</style>");
     std::println("number of permutations: {}", number_of_permutations);
 
-#define TD "<td class=\"{0}\">{0}</td>"
+    auto print_cell = [](std::string_view perm, bool header = false) {
+        std::print("<td class=\"{}{}\">{}</td>", perm, (header?" table_header":""), perm);
+    };
 
-    auto print_row = [&](std::string_view perm) -> bool{
+    auto print_row = [&](std::string_view perm, bool header_row = false) -> bool{
         for(auto& perm_column : perms){
             auto opt = apply_permutations_onto_another(perm,perm_column);
             if(opt)
-                std::print(TD,*opt);
+                print_cell(*opt, header_row);
             else
                 return false;
         }
@@ -246,21 +251,21 @@ bool print_group_table(std::uint32_t places){
 
     std::println("<table>");
     // print header of table
-    std::print("<tr>" TD, std::string(places, ' '));
+    std::print("<tr><td></td>");
     const auto identity = get_identity_permutation(places);
-    if(!print_row(identity))
+    if(!print_row(identity, true))
         return false;
 
     // print bulk of the table
     for(auto& perm_row : perms){
-        std::print("<tr>" TD, perm_row);
+        std::print("<tr>");
+        print_cell(perm_row, true);
         if(!print_row(std::string_view{perm_row}))
             return false;
     }
     std::println("</table>");
     std::println("</body>\n</html>");
     return true;
-#undef TD
 }
 
 static void print_binary_permutation(std::span<char> all, std::span<char> rest, std::size_t part){
@@ -333,7 +338,7 @@ int main(){
     //print_all_powers(std::string_view{murks});
 
     //print_permutation(4);
-    print_group_table(4);
+    print_group_table(3);
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
 
