@@ -90,15 +90,15 @@ static std::optional<std::string> get_other_permutation_representation(std::stri
     }
     return ret;
 }
-static void print_permutation_differently(std::string_view view){
+static void print_permutation_differently(std::FILE* stream, std::string_view view){
     auto opt = get_other_permutation_representation(view);
     if(!opt)
         throw std::exception();
-    std::print("{} - {}", view, *opt);
+    std::print(stream, "{} - {}", view, *opt);
 }
-static void print_permutation_differently(std::span<char> span){
+static void print_permutation_differently(std::FILE* stream, std::span<char> span){
     std::string_view view(span.data(), span.size());
-    print_permutation_differently(view);
+    print_permutation_differently(stream, view);
 }
 
 static void print_span(std::span<char> span){
@@ -128,7 +128,7 @@ static std::optional<std::size_t> get_order(std::string_view view){
     return ret;
 }
 
-static void print_all_powers(std::string_view view){
+static void print_all_powers(std::FILE* stream, std::string_view view){
     const std::string identity_permutation = get_identity_permutation(view.size());
     std::string str = identity_permutation;
 
@@ -139,14 +139,14 @@ static void print_all_powers(std::string_view view){
             break;
         }
         str = std::move(*string_opt);
-        print_permutation_differently(std::string_view{str});
-        std::print(",  ");
+        print_permutation_differently(stream, std::string_view{str});
+        std::print(stream, ",  ");
     }while(str != identity_permutation);
 }
 
-static void print_all_powers(std::span<char> span){
+static void print_all_powers(std::FILE* stream, std::span<char> span){
     std::string_view view(span.data(), span.size());
-    return print_all_powers(view);
+    return print_all_powers(stream, view);
 }
 
 static void calc_permutation(std::function<void(std::string_view)> call_back, std::span<char> all, std::span<char> filled, std::span<char> unfilled){
@@ -196,9 +196,9 @@ bool print_permutation(std::uint32_t places){
 
     auto print = [](std::string_view view)->void{
         //print_span(filled);
-        //print_permutation_differently(filled);
-        print_all_powers(view);
-        std::println("");
+        //print_permutation_differently(stdout, filled);
+        print_all_powers(stdout, view);
+        std::println(stdout, "");
     };
 
     calc_permutation(print, all, all.first(0), all);
@@ -419,11 +419,31 @@ bool print_ternary_permutation(std::uint32_t a, std::uint32_t b, std::uint32_t c
     return true;
 }
 
-int main(){
-    //std::string murks = "BA";
-    //print_all_powers(std::string_view{murks});
+void check_expect(std::string_view a, std::string_view b, std::string_view expected){
+    auto result = apply_permutations_onto_another(a,b);
+    if(!result)
+        throw std::exception();
 
-    if(!print_group_table(3)){
+    auto res = result.value();
+    if(result == expected)
+        std::println(stderr, "{} x {} = {} (correct)", a, b, res);
+    else{
+        std::println(stderr, "{} x {} = {}, expected {}", a, b, res, expected);
+        assert(res == expected);
+        throw std::exception();
+    }
+}
+
+int main(){
+
+    check_expect("ABC", "ABC", "ABC");
+    check_expect("ABC", "CAB", "CAB");
+    check_expect("CAB", "ABC", "CAB");
+
+    std::string murks = "BCA";
+    print_all_powers(stderr, std::string_view{murks});
+
+    if(!print_group_table(3, true)){
         std::print(stderr, "error");
         return 1;
     }
