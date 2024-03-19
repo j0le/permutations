@@ -201,12 +201,14 @@ Integer fakultät(const Integer numb){
 bool print_table(std::vector<std::string> perms, std::uint32_t places){
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto css_class = perm;
+        auto hover_text = perm;
         auto display_text_opt = get_other_permutation_representation(perm);
         if(!display_text_opt) {
             std::println(stderr, "this is the fucked up thing: {}", perm);
             return false;
         }
-        std::print("<td class=\"{}{}\">{}</td>", css_class, (header?" table_header":""), *display_text_opt);
+        std::print("<td class=\"{1}{2}\" title=\"{3}\">{0}</td>",
+                *display_text_opt, css_class, (header?" table_header":""), hover_text);
         return true;
     };
 
