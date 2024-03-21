@@ -229,7 +229,6 @@ template <std::ranges::range R>
     requires std::same_as<std::ranges::range_value_t<R>, std::string_view>
 static bool print_table(R perms, std::uint32_t places) {
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
-        auto css_class = perm;
         auto hover_text = perm;
         auto display_text_opt = get_other_permutation_representation(perm);
         if (!display_text_opt) {
@@ -240,8 +239,8 @@ static bool print_table(R perms, std::uint32_t places) {
         if (!order_opt) {
             return false;
         }
-        std::print("<td class=\"{1}{2}\" title=\"{3}, order: {4}\">{0}</td>",
-                   *display_text_opt, css_class,
+        std::print("<td class=\"{1}{2}\" data-perm=\"{1}\" title=\"{3}, order: {4}\">{0}</td>",
+                   *display_text_opt, perm,
                    (header ? " table_header" : ""), hover_text, *order_opt);
         return true;
     };
@@ -299,11 +298,20 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
 
     std::println("<!DOCTYPE html>\n<html>\n<body>");
 
+    std::println(R"(<script src="./script.js" defer></script>)");
+
     // Print CSS for colors
     std::println("<style>");
-    std::println(".table_header{{\n"
+    std::println(".table_header:not(.selected_elm){{\n"
                  "font-weight: bold;\n"
-                 "}}");
+                 "}}\n"
+                 ".selected_elm.table_header {{\n"
+                 "background-color: red;\n"
+                 "}}\n"
+                 ".selected_elm:not(.table_header) {{\n"
+                 "background-color: green;\n"
+                 "}}\n"
+                 );
     int i = 0;
     bool first = true;
     for (auto &perm : perms) {
@@ -312,7 +320,7 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
             return false;
         }
         std::size_t color = 360z * (order_opt.value() - 1z) / places;
-        std::println(".{}{{\n"
+        std::println(".{}:not(.selected_elm){{\n"
                      "{}background-color: hsl( {}deg 75% 75% );\n"
                      "}}",
                      perm, (first ? "//" : ""),
