@@ -216,8 +216,8 @@ Integer fakultät(const Integer numb){
 }
 
 template<std::ranges::range R>
-static bool print_table(R perms, std::uint32_t places)
     requires std::is_same_v<std::ranges::range_value_t<R>, std::string_view>
+static bool print_table(R perms, std::uint32_t places)
 {
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto css_class = perm;
