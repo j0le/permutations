@@ -206,7 +206,7 @@ bool print_permutation(std::uint32_t places){
     return true;
 }
 
-template<class Integer>
+template<std::integral Integer>
 Integer fakultät(const Integer numb){
     Integer result = 1;
     for(Integer i = 1; i <= numb; ++i){
