@@ -1,9 +1,22 @@
+
+let selected_perms = {}
+
 function handle_click(event){
     const cell = event.target;
     const perm_attr = cell.attributes.getNamedItem("data-perm");
     if(perm_attr != null && perm_attr.value != ""){
-        for(const other_cell of document.querySelectorAll("th." + perm_attr.value)){
+        const perm = perm_attr.value;
+        for(const other_cell of document.querySelectorAll("." + perm)){
             other_cell.classList.add("selected_elm");
+        }
+        selected_perms[perm] = true;
+        for(sp in selected_perms){
+            for(const crossing_cell of document.querySelectorAll("td.column_"+sp+".row_"+perm)){
+                crossing_cell.classList.add("crossed_cell");
+            }
+            for(const crossing_cell of document.querySelectorAll("td.column_"+perm+".row_"+sp)){
+                crossing_cell.classList.add("crossed_cell");
+            }
         }
     }
 }

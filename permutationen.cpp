@@ -336,7 +336,7 @@ template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
         std::size_t color_by_order = 360z * (order_opt.value() - 1z) / places;
         std::size_t color = false ? color_by_order : i;
         std::println("th.{0}:not(.selected_elm),\n"
-                     "td.{0} {{\n"
+                     "td.{0}:not(.crossed_cell) {{\n"
                      "    {1}background-color: hsl( {2}deg 75% 75% ){3};\n"
                      "}}",
                      perm, (first ? "/*" : ""), color, (first ? "*/" : ""));

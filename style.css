@@ -22,6 +22,10 @@ th.selected_elm {
     background-color: red;
 }
 
-tr:not(:hover) td.selected_elm {
+td.crossed_cell:not(.selected_elm) {
     background-color: green;
 }
+td.crossed_cell.selected_elm {
+    background-color: red;
+}
+
