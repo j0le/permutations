@@ -262,7 +262,9 @@ template <std::integral Integer> Integer fakultät(const Integer numb) {
 
 template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_table(R perms, UInt32 places) {
-    auto print_cell = [](std::string_view perm, bool header = false) -> bool {
+    auto print_cell = [](std::string_view perm, std::string_view row,
+                         std::string_view column) -> bool {
+        bool is_header = row == "header" || column == "header";
         auto hover_text = perm;
         auto display_text_opt = get_other_permutation_representation(perm);
         if (!display_text_opt) {
@@ -273,18 +275,26 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
         if (!order_opt) {
             return false;
         }
-        std::print(
-            R"~~~(<t{5} class="{1}{2}" data-perm="{1}" title="{3}, order: {4}">{0}</t{5}>)~~~",
-            *display_text_opt, perm, (header ? " table_header" : ""),
-            hover_text, *order_opt, (header ? 'h' : 'd'));
+        std::print(R"(<t{5} )"
+                   R"(class="{1}{2} row_{6} column_{7}" )"
+                   R"(data-row="{6}" data-column="{7}" data-perm="{1}" )"
+                   R"(title="{3}, order: {4}">)"
+                   R"({0})"
+                   R"(</t{5}>)",
+                   *display_text_opt, perm, (is_header ? " table_header" : ""),
+                   hover_text, *order_opt, (is_header ? 'h' : 'd'), row,
+                   column);
         return true;
     };
 
-    auto print_row = [&](std::string_view perm,
-                         bool header_row = false) -> bool {
+    auto print_row = [&](std::string_view perm_row,
+                         bool is_header_row = false) -> bool {
         for (std::string_view perm_column : perms) {
-            auto opt = apply_permutations_onto_another(perm, perm_column);
-            if (!opt || !print_cell(*opt, header_row)) {
+            auto opt = apply_permutations_onto_another(perm_row, perm_column);
+            if (!opt || !print_cell(*opt,
+                                    (is_header_row ? std::string_view{"header"}
+                                                   : perm_row),
+                                    perm_column)) {
                 return false;
             }
         }
@@ -304,7 +314,7 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
     std::println("<tbody>");
     for (std::string_view perm_row : perms) {
         std::print("<tr>");
-        print_cell(perm_row, true);
+        print_cell(perm_row, perm_row, "header");
         if (!print_row(perm_row))
             return false;
     }
