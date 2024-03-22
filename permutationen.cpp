@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -7,8 +8,32 @@
 #include <print>
 #include <ranges>
 #include <span>
+#include <type_traits>
 #include <utility>
 #include <vector>
+
+namespace permutations {
+
+namespace concepts {
+
+// suffix "_c" is for "concept"
+
+template <typename T>
+concept bool_or_void_c = std::same_as<T, bool> || std::same_as<T, void>;
+
+template <typename R>
+concept range_of_string_views_c =
+    ::std::ranges::range<R> &&
+    std::same_as<std::ranges::range_value_t<R>, std::string_view>;
+
+template <typename R>
+concept range_of_string_view_likes_c =
+    ::std::ranges::range<R> &&
+    std::convertible_to<std::ranges::range_value_t<R>, std::string_view>;
+
+template <typename T>
+concept uint32_c = std::same_as<T, std::uint32_t>;
+} // namespace concepts
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
 typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
@@ -157,10 +182,7 @@ static void print_all_powers(std::FILE *stream, std::span<char> span) {
     return print_all_powers(stream, view);
 }
 
-template <typename T>
-concept bool_or_void = std::same_as<T, bool> || std::same_as<T, void>;
-
-template <bool_or_void ReturnTypeOfCallBack>
+template <concepts::bool_or_void_c ReturnTypeOfCallBack>
 [[nodiscard]] static ReturnTypeOfCallBack calc_permutation(
     std::function<ReturnTypeOfCallBack(std::string_view)> call_back,
     std::span<char> all, std::span<char> filled, std::span<char> unfilled) {
@@ -238,9 +260,8 @@ template <std::integral Integer> Integer fakultät(const Integer numb) {
     return result;
 }
 
-template <std::ranges::range R>
-    requires std::same_as<std::ranges::range_value_t<R>, std::string_view>
-[[nodiscard]] static bool print_table(R perms, std::uint32_t places) {
+template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
+[[nodiscard]] static bool print_table(R perms, UInt32 places) {
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto hover_text = perm;
         auto display_text_opt = get_other_permutation_representation(perm);
@@ -291,8 +312,7 @@ template <std::ranges::range R>
     return true;
 }
 
-template <std::ranges::range R, std::integral UInt32>
-    requires std::same_as<UInt32, std::uint32_t>
+template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_css(R perms, UInt32 places,
                                     std::size_t number_of_permutations) {
     std::println("<style>");
@@ -317,8 +337,7 @@ template <std::ranges::range R, std::integral UInt32>
     return true;
 }
 
-template <std::ranges::range R, std::integral UInt32>
-    requires std::same_as<UInt32, std::uint32_t>
+template <std::ranges::range R, concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_table_permuted(R perms, UInt32 places) {
     assert(std::cmp_greater_equal(perms.size(), 1));
     std::string str(perms.size(), '\0');
@@ -501,16 +520,19 @@ void check_expect(std::string_view a, std::string_view b,
     }
 }
 
-int main() {
+} // namespace permutations
 
-    check_expect("ABC", "ABC", "ABC");
-    check_expect("ABC", "CAB", "CAB");
-    check_expect("CAB", "ABC", "CAB");
+int main() {
+    namespace p = permutations;
+
+    p::check_expect("ABC", "ABC", "ABC");
+    p::check_expect("ABC", "CAB", "CAB");
+    p::check_expect("CAB", "ABC", "CAB");
 
     std::string murks = "BCA";
-    print_all_powers(stderr, std::string_view{murks});
+    p::print_all_powers(stderr, std::string_view{murks});
 
-    if (!print_group_table(4)) {
+    if (!p::print_group_table(4)) {
         std::print(stderr, "error");
         return 1;
     }
