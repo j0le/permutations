@@ -325,8 +325,9 @@ template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
         }
         std::size_t color_by_order = 360z * (order_opt.value() - 1z) / places;
         std::size_t color = false ? color_by_order : i;
-        std::println("tr:not(:hover) .{}:not(.selected_elm){{\n"
-                     "{}background-color: hsl( {}deg 75% 75% ){};\n"
+        std::println("tr:not(:hover) th.{0}:not(.selected_elm),\n"
+                     "tr:not(:hover) td.{0} {{\n"
+                     "    {1}background-color: hsl( {2}deg 75% 75% ){3};\n"
                      "}}",
                      perm, (first ? "/*" : ""), color, (first ? "*/" : ""));
         first = false;
