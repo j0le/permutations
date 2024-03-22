@@ -298,7 +298,7 @@ template <std::ranges::range R, std::integral UInt32>
     std::println("<style>");
     size_t i = 0;
     bool first = true;
-    for (auto &perm : perms) {
+    for (std::string_view perm : perms) {
         auto order_opt = get_order(perm);
         if (!order_opt) {
             return false;
