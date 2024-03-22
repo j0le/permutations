@@ -1,10 +1,32 @@
 
-.table_header:not(.selected_elm){
+table {
+    table-layout: fixed;
+    width: 100%;
+    
+    /*
+    border-collapse: collapse;
+    border: 3px solid purple;
+    */
+}
+
+th,
+td {
+    /*padding: 5px;*/
+}
+
+th:not(.selected_elm){
     font-weight: bold;
 }
-.selected_elm.table_header {
+
+th.selected_elm {
     background-color: red;
 }
-.selected_elm:not(.table_header) {
+
+tr:not(:hover) td.selected_elm {
     background-color: green;
+}
+
+tr:hover,
+tr:hover td {
+    background-color: grey;
 }

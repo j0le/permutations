@@ -239,9 +239,10 @@ static bool print_table(R perms, std::uint32_t places) {
         if (!order_opt) {
             return false;
         }
-        std::print("<td class=\"{1}{2}\" data-perm=\"{1}\" title=\"{3}, order: {4}\">{0}</td>",
+        std::print("<t{5} class=\"{1}{2}\" data-perm=\"{1}\" title=\"{3}, order: {4}\">{0}</t{5}>",
                    *display_text_opt, perm,
-                   (header ? " table_header" : ""), hover_text, *order_opt);
+                   (header ? " table_header" : ""), hover_text, *order_opt,
+                   (header ? 'h' : 'd'));
         return true;
     };
 
@@ -259,19 +260,21 @@ static bool print_table(R perms, std::uint32_t places) {
 
     std::println("<table>");
     // print header of table
-    std::print("<tr><td></td>");
+    std::print("<thead>\n<tr><th></th>");
     const auto identity = get_identity_permutation(places);
     if (!print_row(identity, true))
         return false;
+    std::println("</thead>");
 
     // print bulk of the table
+    std::println("<tbody>");
     for (std::string_view perm_row : perms) {
         std::print("<tr>");
         print_cell(perm_row, true);
         if (!print_row(perm_row))
             return false;
     }
-    std::println("</table>");
+    std::println("</tbody></table>");
     return true;
 }
 
@@ -301,26 +304,25 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
     std::println(R"(<script src="./script.js" defer></script>)");
 
     // Print CSS for colors
-    std::println(R"(<link rel="stylesheet" href="./style.css" />)");
     std::println("<style>");
-    int i = 0;
+    size_t i = 0;
     bool first = true;
     for (auto &perm : perms) {
         auto order_opt = get_order(perm);
         if (!order_opt) {
             return false;
         }
-        std::size_t color = 360z * (order_opt.value() - 1z) / places;
-        std::println(".{}:not(.selected_elm){{\n"
-                     "{}background-color: hsl( {}deg 75% 75% );\n"
+        std::size_t color_by_order = 360z * (order_opt.value() - 1z) / places;
+        std::size_t color = false ? color_by_order : i;
+        std::println("tr:not(:hover) .{}:not(.selected_elm){{\n"
+                     "{}background-color: hsl( {}deg 75% 75% ){};\n"
                      "}}",
-                     perm, (first ? "//" : ""),
-                     // i
-                     color);
+                     perm, (first ? "/*" : ""), color, (first ? "*/" : ""));
         first = false;
         i += (360 / number_of_permutations);
     }
     std::println("</style>");
+    std::println(R"(<link rel="stylesheet" href="./style.css" />)");
     std::println("</head>\n<body>");
     std::println("<p>number of permutations: {}</p>", number_of_permutations);
 
