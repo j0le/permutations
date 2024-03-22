@@ -273,10 +273,10 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
         if (!order_opt) {
             return false;
         }
-        std::print("<t{5} class=\"{1}{2}\" data-perm=\"{1}\" title=\"{3}, order: {4}\">{0}</t{5}>",
-                   *display_text_opt, perm,
-                   (header ? " table_header" : ""), hover_text, *order_opt,
-                   (header ? 'h' : 'd'));
+        std::print(
+            R"~~~(<t{5} class="{1}{2}" data-perm="{1}" title="{3}, order: {4}">{0}</t{5}>)~~~",
+            *display_text_opt, perm, (header ? " table_header" : ""),
+            hover_text, *order_opt, (header ? 'h' : 'd'));
         return true;
     };
 
