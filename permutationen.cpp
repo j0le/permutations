@@ -157,9 +157,13 @@ static void print_all_powers(std::FILE *stream, std::span<char> span) {
     return print_all_powers(stream, view);
 }
 
-static void calc_permutation(std::function<void(std::string_view)> call_back,
-                             std::span<char> all, std::span<char> filled,
-                             std::span<char> unfilled) {
+template <typename T>
+concept bool_or_void = std::same_as<T, bool> || std::same_as<T, void>;
+
+template <bool_or_void ReturnTypeOfCallBack>
+static ReturnTypeOfCallBack calc_permutation(
+    std::function<ReturnTypeOfCallBack(std::string_view)> call_back,
+    std::span<char> all, std::span<char> filled, std::span<char> unfilled) {
     std::size_t sum = filled.size() + unfilled.size();
     assert(std::cmp_equal(sum, all.size()));
     assert(filled.empty() || (all.begin() == filled.begin()));
@@ -167,8 +171,7 @@ static void calc_permutation(std::function<void(std::string_view)> call_back,
            (all.begin() + filled.size()) == unfilled.begin());
     if (std::cmp_equal(unfilled.size(), 0)) {
         std::string_view view(filled.data(), filled.size());
-        call_back(view);
-        return;
+        return call_back(view);
     }
     char c = 'A';
     bool found = false;
@@ -192,10 +195,20 @@ static void calc_permutation(std::function<void(std::string_view)> call_back,
         }
         assert(!found);
         unfilled[0] = c;
-        calc_permutation(call_back, all, all.first(filled.size() + 1),
-                         all.last(unfilled.size() - 1));
+        auto call_recursive = [&] {
+            return calc_permutation(call_back, all,
+                                    all.first(filled.size() + 1),
+                                    all.last(unfilled.size() - 1));
+        };
+        if constexpr (std::is_same_v<ReturnTypeOfCallBack, void>) {
+            call_recursive();
+        } else if (!call_recursive()) {
+            return false;
+        }
+
         c++;
     }
+    return static_cast<ReturnTypeOfCallBack>(true);
 }
 
 bool print_permutation(std::uint32_t places) {
@@ -213,7 +226,7 @@ bool print_permutation(std::uint32_t places) {
         std::println(stdout, "");
     };
 
-    calc_permutation(print, all, all.first(0), all);
+    calc_permutation<void>(print, all, all.first(0), all);
     return true;
 }
 
@@ -278,32 +291,10 @@ static bool print_table(R perms, std::uint32_t places) {
     return true;
 }
 
-bool print_group_table(std::uint32_t places, bool permute_table = false) {
-    const auto max_number_of_digits = 'Z' - 'A' + 1z;
-    if (std::cmp_greater(places, max_number_of_digits)) {
-        return false;
-    }
-    std::string str(places, '\0');
-    std::span all(str.data(), str.length());
-
-    std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
-
-    std::vector<std::string> perms{};
-    perms.reserve(number_of_permutations);
-
-    auto put_into_vector = [&](std::string_view view) {
-        perms.push_back(std::string{view});
-    };
-
-    calc_permutation(put_into_vector, all, all.first(0), all);
-
-    assert(number_of_permutations == perms.size());
-
-    std::println("<!DOCTYPE html>\n<html>\n<head>");
-
-    std::println(R"(<script src="./script.js" defer></script>)");
-
-    // Print CSS for colors
+template <std::ranges::range R, std::integral UInt32>
+    requires std::same_as<UInt32, std::uint32_t>
+static bool print_css(R perms, UInt32 places,
+                      std::size_t number_of_permutations) {
     std::println("<style>");
     size_t i = 0;
     bool first = true;
@@ -323,36 +314,85 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
     }
     std::println("</style>");
     std::println(R"(<link rel="stylesheet" href="./style.css" />)");
+    return true;
+}
+
+template <std::ranges::range R, std::integral UInt32>
+    requires std::same_as<UInt32, std::uint32_t>
+static bool print_table_permuted(R perms, UInt32 places) {
+    assert(std::cmp_greater_equal(perms.size(), 1));
+    std::string str(perms.size(), '\0');
+    std::span all(str.data(), str.length());
+
+    size_t counter = 0;
+    auto permute_table_and_print = [&](std::string_view view) -> bool {
+        std::vector<std::string_view> new_order{};
+        new_order.reserve(perms.size());
+        assert(view.size() == perms.size());
+        for (char c : view) {
+            auto index_opt = letter_to_index(c, view.size());
+            if (!index_opt) {
+                return false;
+            }
+            auto index = *index_opt;
+            new_order.push_back(std::string_view{perms[index]});
+        }
+        std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
+        if (!print_table(new_order, places))
+            return false;
+        counter++;
+        return true;
+    };
+
+    return calc_permutation<bool>(permute_table_and_print, all, all.first(0),
+                                  all);
+}
+
+static bool compare_by_order(std::string_view a, std::string_view b) {
+    auto order_a_opt = get_order(a);
+    auto order_b_opt = get_order(b);
+    if (order_a_opt.has_value() && order_b_opt.has_value())
+        return *order_a_opt < *order_b_opt;
+    else if (order_a_opt.has_value() == order_b_opt.has_value())
+        return false;
+    else if (!order_a_opt.has_value())
+        return true;
+    else
+        return false;
+}
+
+bool print_group_table(std::uint32_t places, bool permute_table = false) {
+    const auto max_number_of_digits = 'Z' - 'A' + 1z;
+    if (std::cmp_greater(places, max_number_of_digits)) {
+        return false;
+    }
+    std::string str(places, '\0');
+    std::span all(str.data(), str.length());
+
+    std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
+
+    std::vector<std::string> perms{};
+    perms.reserve(number_of_permutations);
+
+    auto put_into_vector = [&](std::string_view view) -> void {
+        perms.push_back(std::string{view});
+    };
+
+    calc_permutation<void>(put_into_vector, all, all.first(0), all);
+
+    assert(number_of_permutations == perms.size());
+
+    std::println("<!DOCTYPE html>\n<html>\n<head>");
+
+    std::println(R"(<script src="./script.js" defer></script>)");
+
+    if (!print_css(perms, places, number_of_permutations))
+        return false;
     std::println("</head>\n<body>");
     std::println("<p>number of permutations: {}</p>", number_of_permutations);
 
     if (permute_table) {
-        assert(std::cmp_greater_equal(perms.size(), 1));
-        std::string str(perms.size(), '\0');
-        std::span all(str.data(), str.length());
-
-        bool error = false;
-        size_t counter = 0;
-        auto permute_table_and_print = [&](std::string_view view) {
-            std::vector<std::string_view> new_order{};
-            new_order.reserve(perms.size());
-            assert(view.size() == perms.size());
-            for (char c : view) {
-                auto index_opt = letter_to_index(c, view.size());
-                if (!index_opt) {
-                    error = true;
-                    return;
-                }
-                auto index = *index_opt;
-                new_order.push_back(std::string_view{perms[index]});
-            }
-            std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
-            print_table(new_order, places);
-            counter++;
-        };
-
-        calc_permutation(permute_table_and_print, all, all.first(0), all);
-        if (error)
+        if (!print_table_permuted(perms, places))
             return false;
     } else {
         auto range_of_string_views =
@@ -360,23 +400,9 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
                         []<typename T>(T &&string) -> std::string_view {
                             return std::string_view{std::forward<T>(string)};
                         });
-
         auto vector_of_string_views =
             range_of_string_views | std::ranges::to<std::vector>();
-        std::ranges::sort(
-            vector_of_string_views,
-            [](std::string_view a, std::string_view b) -> bool {
-                auto order_a_opt = get_order(a);
-                auto order_b_opt = get_order(b);
-                if (order_a_opt.has_value() && order_b_opt.has_value())
-                    return *order_a_opt < *order_b_opt;
-                else if (order_a_opt.has_value() == order_b_opt.has_value())
-                    return false;
-                else if (!order_a_opt.has_value())
-                    return true;
-                else
-                    return false;
-            });
+        std::ranges::sort(vector_of_string_views, compare_by_order);
         print_table(vector_of_string_views, places);
         std::println("<br/><p>unsorted:</p>");
         print_table(range_of_string_views, places);
