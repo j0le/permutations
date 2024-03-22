@@ -208,7 +208,7 @@ SpacesBeforeTrailingComments: 1
 SpacesInAngles:  Never
 SpacesInContainerLiterals: true
 SpacesInLineCommentPrefix:
-  Minimum:         1
+  Minimum:         0
   Maximum:         -1
 SpacesInParens:  Never
 SpacesInParensOptions:
