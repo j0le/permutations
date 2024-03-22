@@ -25,8 +25,3 @@ th.selected_elm {
 tr:not(:hover) td.selected_elm {
     background-color: green;
 }
-
-tr:hover,
-tr:hover td {
-    background-color: grey;
-}
