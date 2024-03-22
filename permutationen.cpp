@@ -296,22 +296,13 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
 
     assert(number_of_permutations == perms.size());
 
-    std::println("<!DOCTYPE html>\n<html>\n<body>");
+    std::println("<!DOCTYPE html>\n<html>\n<head>");
 
     std::println(R"(<script src="./script.js" defer></script>)");
 
     // Print CSS for colors
+    std::println(R"(<link rel="stylesheet" href="./style.css" />)");
     std::println("<style>");
-    std::println(".table_header:not(.selected_elm){{\n"
-                 "font-weight: bold;\n"
-                 "}}\n"
-                 ".selected_elm.table_header {{\n"
-                 "background-color: red;\n"
-                 "}}\n"
-                 ".selected_elm:not(.table_header) {{\n"
-                 "background-color: green;\n"
-                 "}}\n"
-                 );
     int i = 0;
     bool first = true;
     for (auto &perm : perms) {
@@ -330,6 +321,7 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
         i += (360 / number_of_permutations);
     }
     std::println("</style>");
+    std::println("</head>\n<body>");
     std::println("<p>number of permutations: {}</p>", number_of_permutations);
 
     if (permute_table) {

@@ -1,0 +1,10 @@
+
+.table_header:not(.selected_elm){
+    font-weight: bold;
+}
+.selected_elm.table_header {
+    background-color: red;
+}
+.selected_elm:not(.table_header) {
+    background-color: green;
+}
