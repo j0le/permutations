@@ -24,7 +24,7 @@ function handle_click(event){
 function handle_hover(event, enter){
     const cell = event.target;
     let other_color = "grey";
-    let this_color = "darkgrey";
+    let this_color = "";
     let header_color = "#aa2222";
 
     if(!enter){
