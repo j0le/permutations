@@ -161,7 +161,7 @@ template <typename T>
 concept bool_or_void = std::same_as<T, bool> || std::same_as<T, void>;
 
 template <bool_or_void ReturnTypeOfCallBack>
-static ReturnTypeOfCallBack calc_permutation(
+[[nodiscard]] static ReturnTypeOfCallBack calc_permutation(
     std::function<ReturnTypeOfCallBack(std::string_view)> call_back,
     std::span<char> all, std::span<char> filled, std::span<char> unfilled) {
     std::size_t sum = filled.size() + unfilled.size();
@@ -211,7 +211,7 @@ static ReturnTypeOfCallBack calc_permutation(
     return static_cast<ReturnTypeOfCallBack>(true);
 }
 
-bool print_permutation(std::uint32_t places) {
+[[nodiscard]] bool print_permutation(std::uint32_t places) {
     const auto max_number_of_digits = 'Z' - 'A' + 1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
@@ -240,7 +240,7 @@ template <std::integral Integer> Integer fakultät(const Integer numb) {
 
 template <std::ranges::range R>
     requires std::same_as<std::ranges::range_value_t<R>, std::string_view>
-static bool print_table(R perms, std::uint32_t places) {
+[[nodiscard]] static bool print_table(R perms, std::uint32_t places) {
     auto print_cell = [](std::string_view perm, bool header = false) -> bool {
         auto hover_text = perm;
         auto display_text_opt = get_other_permutation_representation(perm);
@@ -293,8 +293,8 @@ static bool print_table(R perms, std::uint32_t places) {
 
 template <std::ranges::range R, std::integral UInt32>
     requires std::same_as<UInt32, std::uint32_t>
-static bool print_css(R perms, UInt32 places,
-                      std::size_t number_of_permutations) {
+[[nodiscard]] static bool print_css(R perms, UInt32 places,
+                                    std::size_t number_of_permutations) {
     std::println("<style>");
     size_t i = 0;
     bool first = true;
@@ -319,7 +319,7 @@ static bool print_css(R perms, UInt32 places,
 
 template <std::ranges::range R, std::integral UInt32>
     requires std::same_as<UInt32, std::uint32_t>
-static bool print_table_permuted(R perms, UInt32 places) {
+[[nodiscard]] static bool print_table_permuted(R perms, UInt32 places) {
     assert(std::cmp_greater_equal(perms.size(), 1));
     std::string str(perms.size(), '\0');
     std::span all(str.data(), str.length());
@@ -361,7 +361,8 @@ static bool compare_by_order(std::string_view a, std::string_view b) {
         return false;
 }
 
-bool print_group_table(std::uint32_t places, bool permute_table = false) {
+[[nodiscard]] bool print_group_table(std::uint32_t places,
+                                     bool permute_table = false) {
     const auto max_number_of_digits = 'Z' - 'A' + 1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
@@ -403,9 +404,11 @@ bool print_group_table(std::uint32_t places, bool permute_table = false) {
         auto vector_of_string_views =
             range_of_string_views | std::ranges::to<std::vector>();
         std::ranges::sort(vector_of_string_views, compare_by_order);
-        print_table(vector_of_string_views, places);
+        if (!print_table(vector_of_string_views, places))
+            return false;
         std::println("<br/><p>unsorted:</p>");
-        print_table(range_of_string_views, places);
+        if (!print_table(range_of_string_views, places))
+            return false;
     }
 
     std::println("</body>\n</html>");
@@ -431,7 +434,8 @@ static void print_binary_permutation(std::span<char> all, std::span<char> rest,
     }
 }
 
-bool print_binary_permutation(std::uint32_t places, std::uint32_t part) {
+[[nodiscard]] bool print_binary_permutation(std::uint32_t places,
+                                            std::uint32_t part) {
     if (std::cmp_less(places, part)) {
         return false;
     }
@@ -463,8 +467,8 @@ static void print_ternary_permutation(std::span<char> all, std::span<char> rest,
     }
 }
 
-bool print_ternary_permutation(std::uint32_t a, std::uint32_t b,
-                               std::uint32_t c) {
+[[nodiscard]] bool print_ternary_permutation(std::uint32_t a, std::uint32_t b,
+                                             std::uint32_t c) {
     static_assert(sizeof(std::size_t) >= sizeof(std::uint32_t));
     auto ab = a + b;
     if (std::cmp_less(ab, a)) {
