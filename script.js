@@ -12,9 +12,11 @@ function handle_click(event){
         selected_perms[perm] = true;
         for(sp in selected_perms){
             for(const crossing_cell of document.querySelectorAll("td.column_"+sp+".row_"+perm)){
+                crossing_cell.style.backgroundColor = "";
                 crossing_cell.classList.add("crossed_cell");
             }
             for(const crossing_cell of document.querySelectorAll("td.column_"+perm+".row_"+sp)){
+                crossing_cell.style.backgroundColor = "";
                 crossing_cell.classList.add("crossed_cell");
             }
         }
@@ -36,7 +38,7 @@ function handle_hover(event, enter){
     for(const row_or_column of ["row", "column"]){
         const attr = cell.attributes.getNamedItem("data-"+row_or_column);
         if(attr != null && attr.value != ""){
-            for(const other_cell of document.querySelectorAll("td."+row_or_column+"_" + attr.value)){
+            for(const other_cell of document.querySelectorAll("td."+row_or_column+"_" + attr.value+(enter?":not(.crossed_cell)":""))){
                 other_cell.style.backgroundColor = other_color;
             }
         }
