@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <bitset>
 #include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <format>
 #include <functional>
 #include <optional>
 #include <print>
@@ -36,52 +38,12 @@ concept uint32_c = std::same_as<T, std::uint32_t>;
 
 template <typename T>
 concept char_c = std::same_as<T, char>;
+
+// https://stackoverflow.com/a/67603594/6275838
+template <typename From, typename To>
+concept non_narrowing = requires(From f) { To{f}; };
+
 } // namespace concepts
-
-class Permutation {
-  public:
-    typedef uint32_t uint_t;
-    typedef std::span<const uint_t> readonly_span;
-    typedef std::span<uint_t> span;
-
-  private:
-    std::size_t size{};
-    std::unique_ptr<uint_t[]> data{};
-
-  public:
-    Permutation(uint_t places) : size{places}, data{new uint_t[places]{}} {}
-    Permutation(std::initializer_list<uint_t> init)
-        : size{init.size()}, data{new uint_t[init.size()]{}} {
-        std::copy(init.begin(), init.end(), data.get());
-    }
-    Permutation(std::ranges::range auto &&range)
-        requires std::same_as<std::ranges::range_value_t<decltype(range)>,
-                              uint_t>
-        : size{range.size()}, data{new uint_t[range.size()]{}} {
-        std::copy(range.begin(), range.end(), data.get());
-    }
-
-    Permutation(const Permutation &other)
-        : size{other.size}, data{new uint_t[other.size]{}} {
-        std::copy(other.data.get(), other.data.get() + other.size, data.get());
-    }
-    Permutation(Permutation &&) = default;
-
-    Permutation &operator=(const Permutation &other) {
-        *this = Permutation(other);
-        return *this;
-    }
-    Permutation &operator=(Permutation &&) = default;
-
-    ~Permutation() = default;
-
-    constexpr span get_span() { return std::span<uint_t>{data.get(), size}; }
-    constexpr readonly_span get_readonly_span() const {
-        return std::span<const uint_t>{data.get(), size};
-    }
-
-    constexpr std::string to_string() const;
-};
 
 static_assert(std::is_same_v<std::size_t, decltype(sizeof(0))>);
 typedef std::conditional_t<std::is_signed_v<char>, signed char, unsigned char>
@@ -115,71 +77,270 @@ static std::optional<char> index_to_char(size_t index, std::size_t size) {
     return c;
 }
 
-static std::optional<std::string>
+class PermutationException : public std::exception {};
+
+struct PermutationView;
+class Permutation {
+  public:
+    typedef uint32_t uint_t;
+    typedef std::span<const uint_t> readonly_span;
+    typedef std::span<uint_t> span;
+
+  private:
+    std::unique_ptr<uint_t[]> m_data{};
+    span m_span{};
+
+  public:
+    Permutation(uint_t places, bool make_identity_perm = false)
+        : m_data{new uint_t[places]{}}, m_span{m_data.get(), places} {
+
+        if (make_identity_perm) {
+            auto range =
+                std::ranges::iota_view{uint_t{}} | std::views::take(places);
+            std::ranges::copy(range, m_span.begin());
+        }
+    }
+    Permutation(std::initializer_list<uint_t> init)
+        : m_data{new uint_t[init.size()]{}}, m_span{m_data.get(), init.size()} {
+
+        std::ranges::copy(init, m_span.begin());
+    }
+    Permutation(std::ranges::sized_range auto &&range)
+        requires std::same_as<std::ranges::range_value_t<decltype(range)>,
+                              uint_t>
+        : m_data{new uint_t[range.size()]{}},
+          m_span{m_data.get(), range.size()} {
+        std::ranges::copy(range, m_span.begin());
+    }
+
+    Permutation(const Permutation &other)
+        : m_data{new uint_t[other.m_span.size()]{}},
+          m_span{m_data.get(), other.m_span.size()} {
+        std::ranges::copy(other.m_span, m_span.begin());
+    }
+    Permutation(Permutation &&) = default;
+
+    Permutation &operator=(const Permutation &other) {
+        *this = Permutation(other);
+        return *this;
+    }
+    Permutation &operator=(Permutation &&) = default;
+
+    ~Permutation() = default;
+
+    constexpr span get_span() { return m_span; }
+    constexpr readonly_span get_readonly_span() const {
+        return std::span<const uint_t>{this->m_span};
+    }
+
+    constexpr std::string to_string() const;
+
+    constexpr operator readonly_span() const { return get_readonly_span(); }
+    constexpr operator span() { return get_span(); }
+    constexpr operator PermutationView() const;
+
+    constexpr std::size_t size() const { return m_span.size(); }
+};
+
+struct PermutationView : public Permutation::readonly_span {
+  private:
+    typedef Permutation::readonly_span base;
+
+  public:
+    // ctor
+    constexpr PermutationView() : base() {}
+    //constexpr PermutationView(const Permutation& perm)
+    //    : base(perm.get_readonly_span()) {}
+
+    // copy ctor, assignment
+    constexpr PermutationView(const PermutationView &) = default;
+    constexpr PermutationView &operator=(const PermutationView &) = default;
+
+    // move ctor, assignment
+    //PermutationView(PermutationView&&) = default;
+    //PermutationView& operator=(PermutationView&&) = default;
+
+    // ctor, assignment from base
+    constexpr PermutationView(const base &b) : base(b) {}
+    constexpr PermutationView &operator=(const base &b) {
+        this->base::operator=(b);
+        return *this;
+    }
+
+    // dtor
+    constexpr ~PermutationView() = default;
+
+    constexpr base get_readonly_span() { return *this; }
+
+    constexpr bool operator==(const PermutationView &other) const {
+        if (other.size() != this->size())
+            return false;
+        auto other_it = other.begin();
+        for (auto i : *this) {
+            if (i != *(other_it++))
+                return false;
+        }
+        return true;
+    }
+
+    constexpr std::string to_string() const {
+        const std::size_t size = this->size();
+        auto view = *this | std::views::transform(
+                                [size](Permutation::uint_t i) -> char {
+                                    auto opt = index_to_char(i, size);
+                                    if (!opt)
+                                        throw PermutationException();
+                                    return *opt;
+                                });
+        static_assert(
+            std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
+        return view | std::ranges::to<std::string>();
+    }
+};
+
+constexpr Permutation::operator PermutationView() const {
+    return PermutationView{this->get_readonly_span()};
+}
+
+constexpr std::string Permutation::to_string() const {
+    return this->operator PermutationView().to_string();
+}
+
+std::optional<Permutation> string_view_to_Permutation(std::string_view view) {
+    Permutation perm(view.size());
+    auto span = perm.get_span();
+    auto it = span.begin();
+    auto end = span.end();
+    for (char c : view) {
+        if (it == end)
+            return std::nullopt;
+        auto i_opt = letter_to_index(c, view.size());
+        if (!i_opt)
+            return std::nullopt;
+        *it = *i_opt;
+        ++it;
+    }
+    assert(it == end);
+    return perm;
+}
+
+namespace concepts {
+template <typename UINT>
+concept Permutation_uint_c = std::same_as<UINT, Permutation::uint_t>;
+
+template <typename R>
+concept range_of_PermutationViews_c =
+    ::std::ranges::range<R> &&
+    std::same_as<std::ranges::range_value_t<R>, PermutationView>;
+
+template <typename R>
+concept range_of_PermutationView_likes_c =
+    ::std::ranges::range<R> &&
+    std::convertible_to<std::ranges::range_value_t<R>, PermutationView>;
+} //namespace concepts
+
+} // namespace permutations
+
+/*
+// https://fmt.dev/latest/api.html#formatting-user-defined-types
+// https://en.cppreference.com/w/cpp/utility/format/formatter
+// template specialization must be in global namespace
+template <>
+struct std::formatter<permutations::PermutationView, char> {
+
+    template <class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext &ctx) {
+        auto it = ctx.begin();
+        if (it == ctx.end())
+            return it;
+
+        if (*it != '}')
+            throw std::format_error("Invalid format args for PermutationView.");
+
+        return it;
+    }
+
+    template <typename FmtContext>
+    FmtContext::iterator format(const permutations::PermutationView &perm_view,
+                                FmtContext &ctx) {
+        using namespace permutations;
+        const std::size_t size = perm_view.size();
+        auto view =
+            perm_view |
+            std::views::transform([size](Permutation::uint_t i) -> char {
+                auto opt = index_to_char(i, size);
+                if (!opt)
+                    throw PermutationException();
+                return *opt;
+            });
+        static_assert(
+            std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
+        std::ranges::copy(view, ctx.out());
+    }
+};*/
+
+namespace permutations {
+
+static std::optional<Permutation>
 apply_permutations_onto_another(Permutation::readonly_span a,
                                 Permutation::readonly_span b) {
     if (a.size() != b.size())
         return std::nullopt;
     std::size_t size = a.size();
 
-    std::string result(size, '\0');
+    Permutation result(size);
+    auto span = result.get_span();
     for (std::size_t i = 0; i < size; ++i) {
-        auto new_index_opt = letter_to_index(a[i], size);
-        if (!new_index_opt)
+        auto new_index = a[i];
+        if (std::cmp_greater_equal(new_index, size))
             return std::nullopt;
-        auto new_index = *new_index_opt;
-        result[i] = b[new_index];
+        span[i] = b[new_index];
     }
     return result;
 }
 
 static std::optional<std::string>
-get_other_permutation_representation(std::string_view view) {
+get_other_permutation_representation(Permutation::readonly_span span) {
     // Print permutations like in the book "Elementar(st)e Gruppentheorie"
     // by Tobias Glosauer,
     // Chapter 3 "Gruppen ohne Ende",
     // Section 3.2 "Symetrische Gruppen", page 51
     std::string ret{};
-    const constexpr auto diff = 'Z' - 'A' + '\01';
-    static_assert(std::cmp_equal(26, diff));
-    assert(std::cmp_less_equal(view.size(), diff));
-    auto found = std::make_unique<bool[]>(view.size());
-    for (std::size_t i = 0z; i < view.size(); ++i) {
-        if (found[i]) {
+    const constexpr auto max_size = 'Z' - 'A' + '\01';
+    static_assert(std::cmp_equal(26, max_size));
+    assert(std::cmp_less_equal(span.size(), max_size));
+    //auto found = std::make_unique<bool[]>(view.size());
+    std::bitset<max_size> found{};
+    for (std::size_t i = 0z; i < span.size(); ++i) {
+        if (found.test(i)) {
             continue;
         }
-        found[i] = true;
+        found.set(i);
         char current_letter = 'A' + i;
         ret += '(';
         ret += current_letter;
         size_t next_index = i;
         while (true) {
-            char next_letter = view[next_index];
-            if (next_letter < 'A' || next_letter > 'Z')
+            next_index = span[next_index];
+            std::optional<char> next_letter_opt =
+                index_to_char(next_index, span.size());
+            if (!next_letter_opt)
                 return std::nullopt;
-            if (next_letter == current_letter)
+            if (next_index == i)
                 break;
-            next_index = next_letter - 'A';
-            if (next_index >= view.size())
-                return std::nullopt;
-            found[next_index] = true;
-            ret += next_letter;
+            found.set(next_index);
+            ret += *next_letter_opt;
         }
         ret += ')';
     }
     return ret;
 }
 static void print_permutation_differently(std::FILE *stream,
-                                          std::string_view view) {
+                                          Permutation::readonly_span view) {
     auto opt = get_other_permutation_representation(view);
     if (!opt)
         throw std::exception();
-    std::print(stream, "{} - {}", view, *opt);
-}
-static void print_permutation_differently(std::FILE *stream,
-                                          std::span<char> span) {
-    std::string_view view(span.data(), span.size());
-    print_permutation_differently(stream, view);
+    std::print(stream, "{} - {}", PermutationView{view}, *opt);
 }
 
 static void print_span(std::span<char> span) {
@@ -188,50 +349,50 @@ static void print_span(std::span<char> span) {
 }
 
 static Permutation get_identity_permutation(std::size_t places) {
-    return Permutation{std::ranges::iota_view{Permutation::uint_t{}} |
-                       std::views::take(places)};
+    return Permutation(places, true);
 }
 
 static std::optional<std::size_t> get_order(Permutation::readonly_span view) {
     const Permutation identity_permutation =
         get_identity_permutation(view.size());
+    const PermutationView identity = identity_permutation;
     Permutation perm = identity_permutation;
 
     std::size_t ret = 0;
     do {
-        auto string_opt = apply_permutations_onto_another(view, perm);
-        if (!string_opt) {
+        auto perm_opt = apply_permutations_onto_another(view, perm);
+        if (!perm_opt) {
             return std::nullopt;
         }
-        perm = std::move(*string_opt);
+        perm = std::move(*perm_opt);
         ret += 1;
-    } while (perm != identity_permutation);
+    } while (PermutationView{perm} != identity);
     return ret;
 }
 
 static void print_all_powers(std::FILE *stream,
                              Permutation::readonly_span view) {
-    const std::string identity_permutation =
-        get_identity_permutation(view.size());
-    std::string str = identity_permutation;
+    const auto identity_permutation = get_identity_permutation(view.size());
+    const PermutationView identity = identity_permutation;
+    auto perm = identity_permutation;
 
     do {
-        auto string_opt = apply_permutations_onto_another(view, str);
-        if (!string_opt) {
+        auto perm_opt = apply_permutations_onto_another(view, perm);
+        if (!perm_opt) {
             std::println(stderr, "error");
             break;
         }
-        str = std::move(*string_opt);
-        print_permutation_differently(stream, std::string_view{str});
+        perm = std::move(*perm_opt);
+        print_permutation_differently(stream, perm);
         std::print(stream, ",  ");
-    } while (str != identity_permutation);
+    } while (perm != identity);
 }
 
 template <concepts::bool_or_void_c ReturnTypeOfCallBack>
-[[nodiscard]] static ReturnTypeOfCallBack calc_permutation(
-    std::function<ReturnTypeOfCallBack(const Permutation &)> call_back,
-    Permutation &all_perm, std::span<typename Permutation::uint_t> filled,
-    std::span<typename Permutation::uint_t> unfilled) {
+[[nodiscard]] static ReturnTypeOfCallBack
+calc_permutation(std::function<ReturnTypeOfCallBack(PermutationView)> call_back,
+                 Permutation &all_perm, Permutation::span filled,
+                 Permutation::span unfilled) {
 
     typedef typename Permutation::uint_t uint_t;
 
@@ -267,7 +428,7 @@ template <concepts::bool_or_void_c ReturnTypeOfCallBack>
         assert(!found);
         unfilled[0] = i;
         auto call_recursive = [&] {
-            return calc_permutation(call_back, all,
+            return calc_permutation(call_back, all_perm,
                                     all.first(filled.size() + 1),
                                     all.last(unfilled.size() - 1));
         };
@@ -309,12 +470,14 @@ template <std::integral Integer> Integer fakultät(const Integer numb) {
     return result;
 }
 
-template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
+template <concepts::range_of_PermutationView_likes_c R,
+          concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_table(R perms, UInt32 places) {
-    auto print_cell = [](std::string_view perm, std::string_view row,
+    auto print_cell = [](PermutationView perm, std::string_view row,
                          std::string_view column) -> bool {
         bool is_header = row == "header" || column == "header";
-        auto hover_text = perm;
+        std::string perm_str = perm.to_string();
+        const auto &hover_text = perm_str;
         auto display_text_opt = get_other_permutation_representation(perm);
         if (!display_text_opt) {
             std::println(stderr, "this is the fucked up thing: {}", perm);
@@ -324,26 +487,30 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
         if (!order_opt) {
             return false;
         }
-        std::print(R"(<t{5} )"
-                   R"(class="{1}{2} row_{6} column_{7}" )"
-                   R"(data-row="{6}" data-column="{7}" data-perm="{1}" )"
-                   R"(title="{3}, order: {4}">)"
-                   R"({0})"
-                   R"(</t{5}>)",
-                   *display_text_opt, perm, (is_header ? " table_header" : ""),
-                   hover_text, *order_opt, (is_header ? 'h' : 'd'), row,
-                   column);
+        static constexpr const char format[] =
+            "<t{5} "
+            R"~(class="{1}{2} row_{6} column_{7}" )~"
+            R"~(data-row="{6}" data-column="{7}" data-perm="{1}" )~"
+            R"~(title="{3}, order: {4}">)~"
+            "{0}"
+            "</t{5}>";
+        std::print(format, *display_text_opt, perm_str,
+                   (is_header ? " table_header" : ""), hover_text, *order_opt,
+                   (is_header ? 'h' : 'd'), row, column);
         return true;
     };
 
-    auto print_row = [&](std::string_view perm_row,
+    auto print_row = [&](PermutationView perm_row,
                          bool is_header_row = false) -> bool {
-        for (std::string_view perm_column : perms) {
-            auto opt = apply_permutations_onto_another(perm_row, perm_column);
+        for (PermutationView perm_column : perms) {
+            auto opt = apply_permutations_onto_another(
+                perm_row.get_readonly_span(), perm_column);
+            std::string perm_column_str = perm_column.to_string();
+            std::string perm_row_str = perm_row.to_string();
             if (!opt || !print_cell(*opt,
                                     (is_header_row ? std::string_view{"header"}
-                                                   : perm_row),
-                                    perm_column)) {
+                                                   : perm_row_str),
+                                    perm_column_str)) {
                 return false;
             }
         }
@@ -361,9 +528,9 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
 
     // print bulk of the table
     std::println("<tbody>");
-    for (std::string_view perm_row : perms) {
+    for (PermutationView perm_row : perms) {
         std::print("<tr>");
-        print_cell(perm_row, perm_row, "header");
+        print_cell(perm_row, perm_row.to_string(), "header");
         if (!print_row(perm_row))
             return false;
     }
@@ -371,13 +538,14 @@ template <concepts::range_of_string_views_c R, concepts::uint32_c UInt32>
     return true;
 }
 
-template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
+template <concepts::range_of_PermutationView_likes_c R,
+          concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_css(R perms, UInt32 places,
                                     std::size_t number_of_permutations) {
     std::println("<style>");
     size_t i = 0;
     bool first = true;
-    for (std::string_view perm : perms) {
+    for (PermutationView perm : perms) {
         auto order_opt = get_order(perm);
         if (!order_opt) {
             return false;
@@ -388,7 +556,8 @@ template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
                      "td.{0}:not(.crossed_cell) {{\n"
                      "    {1}background-color: hsl( {2}deg 75% 75% ){3};\n"
                      "}}",
-                     perm, (first ? "/*" : ""), color, (first ? "*/" : ""));
+                     perm.to_string(), (first ? "/*" : ""), color,
+                     (first ? "*/" : ""));
         first = false;
         i += (360 / number_of_permutations);
     }
@@ -400,34 +569,33 @@ template <concepts::range_of_string_view_likes_c R, concepts::uint32_c UInt32>
 template <std::ranges::range R, concepts::uint32_c UInt32>
 [[nodiscard]] static bool print_table_permuted(R perms, UInt32 places) {
     assert(std::cmp_greater_equal(perms.size(), 1));
-    std::string str(perms.size(), '\0');
-    std::span all(str.data(), str.length());
+    Permutation perm(perms.size(), '\0');
+    Permutation::span all(perm);
 
     size_t counter = 0;
-    auto permute_table_and_print = [&](std::string_view view) -> bool {
-        std::vector<std::string_view> new_order{};
+    auto permute_table_and_print = [&](PermutationView view) -> bool {
+        std::vector<PermutationView> new_order{};
         new_order.reserve(perms.size());
         assert(view.size() == perms.size());
-        for (char c : view) {
-            auto index_opt = letter_to_index(c, view.size());
-            if (!index_opt) {
+        const std::size_t size = view.size();
+        for (Permutation::uint_t index : view) {
+            if (std::cmp_greater_equal(index, size))
                 return false;
-            }
-            auto index = *index_opt;
-            new_order.push_back(std::string_view{perms[index]});
+            new_order.push_back(PermutationView{perms[index]});
         }
-        std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
+        std::println("<br/><p>Tabelle {}, {}</p>", counter, view.to_string());
         if (!print_table(new_order, places))
             return false;
         counter++;
         return true;
     };
 
-    return calc_permutation<bool>(permute_table_and_print, all, all.first(0),
+    return calc_permutation<bool>(permute_table_and_print, perm, all.first(0),
                                   all);
 }
 
-static bool compare_by_order(std::string_view a, std::string_view b) {
+static bool compare_by_order(Permutation::readonly_span a,
+                             Permutation::readonly_span b) {
     auto order_a_opt = get_order(a);
     auto order_b_opt = get_order(b);
     if (order_a_opt.has_value() && order_b_opt.has_value())
@@ -446,19 +614,19 @@ static bool compare_by_order(std::string_view a, std::string_view b) {
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
     }
-    std::string str(places, '\0');
-    std::span all(str.data(), str.length());
+    Permutation str(places);
+    auto all = str.get_span();
 
     std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
 
-    std::vector<std::string> perms{};
+    std::vector<Permutation> perms{};
     perms.reserve(number_of_permutations);
 
-    auto put_into_vector = [&](std::string_view view) -> void {
-        perms.push_back(std::string{view});
+    auto put_into_vector = [&](PermutationView perm) -> void {
+        perms.push_back(Permutation{perm});
     };
 
-    calc_permutation<void>(put_into_vector, all, all.first(0), all);
+    calc_permutation<void>(put_into_vector, str, all.first(0), all);
 
     assert(number_of_permutations == perms.size());
 
@@ -475,18 +643,18 @@ static bool compare_by_order(std::string_view a, std::string_view b) {
         if (!print_table_permuted(perms, places))
             return false;
     } else {
-        auto range_of_string_views =
+        auto range_of_PermutationViews =
             perms | std::views::transform(
-                        []<typename T>(T &&string) -> std::string_view {
-                            return std::string_view{std::forward<T>(string)};
+                        []<typename T>(T &&string) -> PermutationView {
+                            return PermutationView{std::forward<T>(string)};
                         });
-        auto vector_of_string_views =
-            range_of_string_views | std::ranges::to<std::vector>();
-        std::ranges::sort(vector_of_string_views, compare_by_order);
-        if (!print_table(vector_of_string_views, places))
+        auto vector_of_PermutationViews =
+            range_of_PermutationViews | std::ranges::to<std::vector>();
+        std::ranges::sort(vector_of_PermutationViews, compare_by_order);
+        if (!print_table(vector_of_PermutationViews, places))
             return false;
         std::println("<br/><p>unsorted:</p>");
-        if (!print_table(range_of_string_views, places))
+        if (!print_table(range_of_PermutationViews, places))
             return false;
     }
 
@@ -564,20 +732,33 @@ static void print_ternary_permutation(std::span<char> all, std::span<char> rest,
     return true;
 }
 
-void check_expect(std::string_view a, std::string_view b,
-                  std::string_view expected) {
+void check_expect(PermutationView a, PermutationView b,
+                  PermutationView expected) {
     auto result = apply_permutations_onto_another(a, b);
     if (!result)
         throw std::exception();
 
     auto res = result.value();
     if (result == expected)
-        std::println(stderr, "{} x {} = {} (correct)", a, b, res);
+        std::println(stderr, "{} x {} = {} (correct)", a.to_string(),
+                     b.to_string(), res.to_string());
     else {
-        std::println(stderr, "{} x {} = {}, expected {}", a, b, res, expected);
+        std::println(stderr, "{} x {} = {}, expected {}", a.to_string(),
+                     b.to_string(), res.to_string(), expected.to_string());
         assert(res == expected);
         throw std::exception();
     }
+}
+
+void check_expect(std::string_view a, std::string_view b,
+                  std::string_view expected) {
+    auto A = string_view_to_Permutation(a);
+    auto B = string_view_to_Permutation(b);
+    auto E = string_view_to_Permutation(expected);
+    if (!A || !B || !E)
+        throw std::exception(); // Conversion form string_view to Permutation
+                                // didn't worked
+    return check_expect(*A, *B, *E);
 }
 
 } // namespace permutations
@@ -590,7 +771,10 @@ int main() {
     p::check_expect("CAB", "ABC", "CAB");
 
     std::string murks = "BCA";
-    p::print_all_powers(stderr, std::string_view{murks});
+    auto opt = p::string_view_to_Permutation(murks);
+    if (!opt)
+        throw std::exception();
+    p::print_all_powers(stderr, *opt);
 
     if (!p::print_group_table(4)) {
         std::print(stderr, "error");
