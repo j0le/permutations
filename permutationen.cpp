@@ -206,7 +206,7 @@ constexpr std::string Permutation::to_string() const {
     return this->operator PermutationView().to_string();
 }
 
-std::optional<Permutation> string_view_to_Permutation(std::string_view view) {
+std::optional<Permutation> str_to_perm(std::string_view view) {
     std::optional<Permutation> perm(std::in_place, view.size());
     auto span = perm->get_span();
     auto it = span.begin();
@@ -767,9 +767,9 @@ void check_expect(PermutationView a, PermutationView b,
 
 void check_expect(std::string_view a, std::string_view b,
                   std::string_view expected) {
-    auto A = string_view_to_Permutation(a);
-    auto B = string_view_to_Permutation(b);
-    auto E = string_view_to_Permutation(expected);
+    auto A = str_to_perm(a);
+    auto B = str_to_perm(b);
+    auto E = str_to_perm(expected);
     if (!A || !B || !E)
         throw std::exception(); // Conversion form string_view to Permutation
                                 // didn't worked
@@ -786,7 +786,7 @@ int main() {
     p::check_expect("CAB", "ABC", "CAB");
 
     std::string murks = "BCA";
-    auto opt = p::string_view_to_Permutation(murks);
+    auto opt = p::str_to_perm(murks);
     if (!opt)
         throw std::exception();
     p::print_all_powers(stderr, *opt);
