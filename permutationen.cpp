@@ -754,7 +754,7 @@ void check_expect(PermutationView a, PermutationView b,
         throw std::exception();
 
     auto res = result.value();
-    if (result == expected)
+    if (res == expected)
         std::println(stderr, "{} x {} = {} (correct)", a.to_string(),
                      b.to_string(), res.to_string());
     else {
