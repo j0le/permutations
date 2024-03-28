@@ -784,6 +784,9 @@ int main() {
     p::check_expect("ABC", "ABC", "ABC");
     p::check_expect("ABC", "CAB", "CAB");
     p::check_expect("CAB", "ABC", "CAB");
+    p::check_expect(           p::str_to_perm("CAB").value(),
+                    p::inverse(p::str_to_perm("CAB").value()),
+                               p::str_to_perm("ABC").value());
 
     std::string murks = "BCA";
     auto opt = p::str_to_perm(murks);
