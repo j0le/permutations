@@ -4,7 +4,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <format>
 #include <functional>
 #include <optional>
 #include <print>
