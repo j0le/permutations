@@ -281,9 +281,12 @@ struct std::formatter<permutations::PermutationView, char> {
 
 namespace permutations {
 
+// Composition of permutations as if they are functions:
+// a ∘ b
+// (a∘b)(i) = a(b(i))
 static std::optional<Permutation>
-apply_permutations_onto_another(Permutation::readonly_span a,
-                                Permutation::readonly_span b) {
+compose_permutations(Permutation::readonly_span a,
+                     Permutation::readonly_span b) {
     if (a.size() != b.size())
         return std::nullopt;
     std::size_t size = a.size();
@@ -291,10 +294,10 @@ apply_permutations_onto_another(Permutation::readonly_span a,
     Permutation result(size);
     auto span = result.get_span();
     for (std::size_t i = 0; i < size; ++i) {
-        auto new_index = a[i];
+        auto new_index = b[i]; // As if `b` was a (mathematical) function: b(i).
         if (std::cmp_greater_equal(new_index, size))
             return std::nullopt;
-        span[i] = b[new_index];
+        span[i] = a[new_index];
     }
     return result;
 }
@@ -360,7 +363,7 @@ static std::optional<std::size_t> get_order(Permutation::readonly_span view) {
 
     std::size_t ret = 0;
     do {
-        auto perm_opt = apply_permutations_onto_another(view, perm);
+        auto perm_opt = compose_permutations(view, perm);
         if (!perm_opt) {
             return std::nullopt;
         }
@@ -377,7 +380,7 @@ static void print_all_powers(std::FILE *stream,
     auto perm = identity_permutation;
 
     do {
-        auto perm_opt = apply_permutations_onto_another(view, perm);
+        auto perm_opt = compose_permutations(view, perm);
         if (!perm_opt) {
             std::println(stderr, "error");
             break;
@@ -503,8 +506,8 @@ template <concepts::range_of_PermutationView_likes_c R,
     auto print_row = [&](PermutationView perm_row,
                          bool is_header_row = false) -> bool {
         for (PermutationView perm_column : perms) {
-            auto opt = apply_permutations_onto_another(
-                perm_row.get_readonly_span(), perm_column);
+            auto opt =
+                compose_permutations(perm_row.get_readonly_span(), perm_column);
             std::string perm_column_str = perm_column.to_string();
             std::string perm_row_str = perm_row.to_string();
             if (!opt || !print_cell(*opt,
@@ -734,7 +737,7 @@ static void print_ternary_permutation(std::span<char> all, std::span<char> rest,
 
 void check_expect(PermutationView a, PermutationView b,
                   PermutationView expected) {
-    auto result = apply_permutations_onto_another(a, b);
+    auto result = compose_permutations(a, b);
     if (!result)
         throw std::exception();
 
