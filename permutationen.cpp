@@ -302,6 +302,18 @@ compose_permutations(Permutation::readonly_span a,
     return result;
 }
 
+Permutation inverse(const Permutation::readonly_span a) {
+    Permutation result(a.size());
+    auto span = result.get_span();
+
+    for (Permutation::uint_t i{}; std::cmp_less(i, a.size()); ++i) {
+        auto j = a[i];
+        assert(std::cmp_less(j, a.size()));
+        span[j] = i;
+    }
+    return result;
+}
+
 static std::optional<std::string>
 get_other_permutation_representation(const Permutation::readonly_span span) {
     // Print permutations like in the book "Elementar(st)e Gruppentheorie"
