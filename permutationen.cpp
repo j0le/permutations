@@ -224,6 +224,13 @@ std::optional<Permutation> str_to_perm(std::string_view view) {
     return perm;
 }
 
+Permutation str_to_perm_or_throw(std::string_view view) {
+    auto opt = str_to_perm(view);
+    if (!opt)
+        throw PermutationException();
+    return *opt;
+}
+
 namespace concepts {
 template <typename UINT>
 concept Permutation_uint_c = std::same_as<UINT, Permutation::uint_t>;
@@ -767,13 +774,8 @@ void check_expect(PermutationView a, PermutationView b,
 
 void check_expect(std::string_view a, std::string_view b,
                   std::string_view expected) {
-    auto A = str_to_perm(a);
-    auto B = str_to_perm(b);
-    auto E = str_to_perm(expected);
-    if (!A || !B || !E)
-        throw std::exception(); // Conversion form string_view to Permutation
-                                // didn't worked
-    return check_expect(*A, *B, *E);
+    return check_expect(str_to_perm_or_throw(a), str_to_perm_or_throw(b),
+                        str_to_perm_or_throw(expected));
 }
 
 } // namespace permutations
@@ -784,9 +786,9 @@ int main() {
     p::check_expect("ABC", "ABC", "ABC");
     p::check_expect("ABC", "CAB", "CAB");
     p::check_expect("CAB", "ABC", "CAB");
-    p::check_expect(           p::str_to_perm("CAB").value(),
-                    p::inverse(p::str_to_perm("CAB").value()),
-                               p::str_to_perm("ABC").value());
+    p::check_expect(           p::str_to_perm_or_throw("CAB"),
+                    p::inverse(p::str_to_perm_or_throw("CAB")),
+                               p::str_to_perm_or_throw("ABC"));
 
     std::string murks = "BCA";
     auto opt = p::str_to_perm(murks);
