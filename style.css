@@ -29,4 +29,7 @@ td.crossed_cell:not(.selected_elm) {
 td.crossed_cell.selected_elm {
     background-color: red;
 }
-
+td.selected_elm:not(.crossed_cell) {
+    text-decoration: line-through;
+    color: rgb( 0 0 0 / 50%);
+}
