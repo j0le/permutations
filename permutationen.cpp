@@ -355,7 +355,7 @@ static void print_permutation_differently(std::FILE *stream,
     auto opt = get_other_permutation_representation(view);
     if (!opt)
         throw std::exception();
-    std::print(stream, "{} - {}", PermutationView{view}, *opt);
+    std::print(stream, "{} - {}", PermutationView{view}.to_string(), *opt);
 }
 
 static void print_span(std::span<char> span) {
