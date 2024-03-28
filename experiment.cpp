@@ -30,7 +30,7 @@ struct experiment_t {
         return *this;
     }
 
-    ~experiment_t() = default;
+    ~experiment_t() { std::println("dtor"); };
 
     constexpr operator experiment_view();
 };
@@ -78,9 +78,34 @@ void experiment_std_vector() {
     experiment_sub_fn(std::span{vec});
 }
 
+static std::optional<experiment_t> experiment_optional_1(bool b) {
+    std::optional<experiment_t> opt(std::in_place, 42);
+    if (!b)
+        return std::nullopt;
+    else
+        return opt;
+}
+
+static std::optional<experiment_t> experiment_optional_2(bool b) {
+    if (!b)
+        return std::nullopt;
+    else
+        return std::optional<experiment_t>(std::in_place, 42);
+}
+
+void experiment_optional() {
+    if (auto x = experiment_optional_1(true))
+        std::println("{}", x->get_value());
+    std::println("#####");
+    if (auto x = experiment_optional_2(true))
+        std::println("{}", x->get_value());
+}
+
 int main() {
     experiment_std_array();
     std::println("--------------------");
     experiment_std_vector();
+    std::println("--------------------");
+    experiment_optional();
     return 0;
 }

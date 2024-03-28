@@ -207,8 +207,8 @@ constexpr std::string Permutation::to_string() const {
 }
 
 std::optional<Permutation> string_view_to_Permutation(std::string_view view) {
-    Permutation perm(view.size());
-    auto span = perm.get_span();
+    std::optional<Permutation> perm(std::in_place, view.size());
+    auto span = perm->get_span();
     auto it = span.begin();
     auto end = span.end();
     for (char c : view) {
@@ -291,8 +291,8 @@ compose_permutations(Permutation::readonly_span a,
         return std::nullopt;
     std::size_t size = a.size();
 
-    Permutation result(size);
-    auto span = result.get_span();
+    std::optional<Permutation> result(std::in_place, size);
+    auto span = result->get_span();
     for (std::size_t i = 0; i < size; ++i) {
         auto new_index = b[i]; // As if `b` was a (mathematical) function: b(i).
         if (std::cmp_greater_equal(new_index, size))
@@ -303,12 +303,12 @@ compose_permutations(Permutation::readonly_span a,
 }
 
 static std::optional<std::string>
-get_other_permutation_representation(Permutation::readonly_span span) {
+get_other_permutation_representation(const Permutation::readonly_span span) {
     // Print permutations like in the book "Elementar(st)e Gruppentheorie"
     // by Tobias Glosauer,
     // Chapter 3 "Gruppen ohne Ende",
     // Section 3.2 "Symetrische Gruppen", page 51
-    std::string ret{};
+    std::optional<std::string> ret(std::in_place);
     const constexpr auto max_size = 'Z' - 'A' + '\01';
     static_assert(std::cmp_equal(26, max_size));
     assert(std::cmp_less_equal(span.size(), max_size));
@@ -320,8 +320,8 @@ get_other_permutation_representation(Permutation::readonly_span span) {
         }
         found.set(i);
         char current_letter = 'A' + i;
-        ret += '(';
-        ret += current_letter;
+        *ret += '(';
+        *ret += current_letter;
         size_t next_index = i;
         while (true) {
             next_index = span[next_index];
@@ -332,9 +332,9 @@ get_other_permutation_representation(Permutation::readonly_span span) {
             if (next_index == i)
                 break;
             found.set(next_index);
-            ret += *next_letter_opt;
+            *ret += *next_letter_opt;
         }
-        ret += ')';
+        *ret += ')';
     }
     return ret;
 }
