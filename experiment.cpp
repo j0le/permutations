@@ -1,3 +1,4 @@
+#include <memory>
 #include <print>
 #include <span>
 #include <type_traits>
@@ -7,6 +8,8 @@ struct experiment_view;
 struct experiment_t {
     int i{};
     int get_value() { return this->i; }
+
+    experiment_t() { std::println("normal constructor"); }
 
     experiment_t(int i) : i{i} { std::println("normal constructor"); }
 
@@ -101,11 +104,14 @@ void experiment_optional() {
         std::println("{}", x->get_value());
 }
 
+void unique_ptr() { std::unique_ptr<experiment_t[]> p(new experiment_t[3]{}); }
+
 int main() {
-    experiment_std_array();
-    std::println("--------------------");
-    experiment_std_vector();
-    std::println("--------------------");
-    experiment_optional();
+    //experiment_std_array();
+    //std::println("--------------------");
+    //experiment_std_vector();
+    //std::println("--------------------");
+    //experiment_optional();
+    unique_ptr();
     return 0;
 }
