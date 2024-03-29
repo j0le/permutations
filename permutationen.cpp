@@ -517,11 +517,12 @@ template <concepts::range_of_PermutationView_likes_c R,
             R"~(class="{1}{2} row_{6} column_{7}" )~"
             R"~(data-row="{6}" data-column="{7}" data-perm="{1}" )~"
             R"~(title="{3}, order: {4}">)~"
-            "{0}"
+            "{8}{0}"
             "</t{5}>";
         std::print(format, *display_text_opt, perm_str,
                    (is_header ? " table_header" : ""), hover_text, *order_opt,
-                   (is_header ? 'h' : 'd'), row, column);
+                   (is_header ? 'h' : 'd'), row, column,
+                   (is_header && false ? R"(<input type="checkbox" />)" : ""));
         return true;
     };
 
