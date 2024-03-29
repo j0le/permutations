@@ -912,37 +912,31 @@ int main() {
         std::println(stderr, "\nThis is one variant of the D4 group:");
         auto D4 = generate_and_print_group(generating_elements);
 
-        auto transformer1 = p::str_to_perm_or_throw("ACBD");
-        auto transformer2 = p::str_to_perm_or_throw("ABDC");
-        std::print(stderr, "transformer 1 is: ");
-        p::print_permutation_differently(stderr, transformer1);
-        std::print(stderr, "\nand these are it's powers: ");
-        p::print_all_powers(stderr, transformer1);
+        p::Permutation transformers[2]{p::str_to_perm_or_throw("ACBD"),
+                                       p::str_to_perm_or_throw("ABDC")};
+        size_t i = 1;
+        for (auto &t : transformers) {
+            std::print(stderr, "transformer {} is: ", i++);
+            p::print_permutation_differently(stderr, t);
+            std::println(stderr, "");
+        }
 
         std::println(stderr, "\nLet us transform the group with it:");
 
-        auto vec1 =
-            D4 | std::views::transform([&](p::PermutationView view) {
-                return p::compose_permutations(transformer1, view).value();
-            }) |
-            std::ranges::to<std::vector>();
-        auto vec2 =
-            D4 | std::views::transform([&](p::PermutationView view) {
-                return p::compose_permutations(transformer2, view).value();
-            }) |
-            std::ranges::to<std::vector>();
-
-        assert(vec1.size() == 8);
-        assert(vec2.size() == 8);
-
-        print_elements(vec1);
-        print_elements(vec2);
+        std::vector<p::Permutation> vecs[2]{};
         p::set collection = D4;
-        collection.insert_range(vec1);
-        collection.insert_range(vec2);
-        print_elements(collection);
 
-        //auto unknown = generate_and_print_group(vec);
+        for (size_t i = 0; i < 2; i++) {
+            vecs[i] = D4 | std::views::transform([&](p::PermutationView view) {
+                          return p::compose_permutations(transformers[i], view)
+                              .value();
+                      }) |
+                      std::ranges::to<std::vector>();
+            print_elements(vecs[i]);
+            collection.insert_range(vecs[i]);
+        }
+
+        print_elements(collection);
     }
     if (!p::print_group_table(4)) {
         std::print(stderr, "error");
