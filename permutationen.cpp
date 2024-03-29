@@ -8,6 +8,7 @@
 #include <optional>
 #include <print>
 #include <ranges>
+#include <set>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -90,6 +91,7 @@ class Permutation {
     span m_span{};
 
   public:
+    Permutation() = default;
     Permutation(uint_t places, bool make_identity_perm = false)
         : m_data{new uint_t[places]{}}, m_span{m_data.get(), places} {
 
@@ -405,8 +407,11 @@ static void print_all_powers(std::FILE *stream,
         }
         perm = std::move(*perm_opt);
         print_permutation_differently(stream, perm);
+        if (perm == identity)
+            break;
         std::print(stream, ",  ");
-    } while (perm != identity);
+    } while (true);
+    std::println(stream, ".");
 }
 
 template <concepts::bool_or_void_c ReturnTypeOfCallBack>
@@ -476,7 +481,6 @@ template <std::size_t places> [[nodiscard]] bool print_permutation() {
         //print_span(view);
         //print_permutation_differently(stdout, view);
         print_all_powers(stdout, perm);
-        std::println(stdout, "");
     };
 
     calc_permutation<void>(print, all, all.first(0), all);
@@ -682,6 +686,80 @@ static bool compare_by_order(Permutation::readonly_span a,
     std::println("</body>\n</html>");
     return true;
 }
+inline constexpr auto cmp_less = [](const Permutation &a,
+                                    const Permutation &b) -> bool {
+    if (a.size() < b.size())
+        return true;
+    if (a.size() > b.size())
+        return false;
+
+    assert(a.size() == b.size());
+    const auto sa = a.get_readonly_span();
+    const auto sb = b.get_readonly_span();
+
+    for (std::size_t i = 0z; i < a.size(); ++i) {
+        if (sa[i] < sb[i])
+            return true;
+        else if (sa[i] == sb[i])
+            continue;
+        else if (sa[i] > sb[i])
+            return false;
+    }
+    return false;
+};
+typedef decltype(cmp_less) cmp_less_t;
+typedef std::set<Permutation, cmp_less_t> set;
+
+set generate_subgroup_from(
+    concepts::range_of_PermutationView_likes_c auto &&range) {
+
+    static constexpr auto cmp_wrapper = [](const Permutation &a,
+                                           const Permutation &b) -> bool {
+        bool less = cmp_less_t{}(a, b);
+        std::println("compare {} {} {}", a.to_string(), (less ? "< " : ">="),
+                     b.to_string());
+        return less;
+    };
+
+    std::vector<Permutation> vec{};
+    set x{};
+    vec.append_range(range);
+    x.insert_range(range);
+
+    for (std::size_t i = 0; i < vec.size(); ++i) {
+        Permutation current = vec[i];
+
+        //std::println("----");
+        //for(auto&x : vec){
+        //    std::print("{}, ", x.to_string());
+        //}
+        //std::println("");
+
+        for (std::size_t jj = 0; jj <= i; ++jj) {
+            Permutation products[2]{};
+            {
+                PermutationView inner_current = vec[jj];
+                products[0] = std::move(
+                    compose_permutations(current, inner_current).value());
+                products[1] = std::move(
+                    compose_permutations(inner_current, current).value());
+            }
+            //size_t kkk =0;
+            for (auto &p : products) {
+                //std::println("{},{}: {}", i, kkk++, p.to_string());
+                if (!x.contains(p)) {
+                    //std::println(" - insert");
+                    x.insert(p);
+                    vec.push_back(std::move(p));
+                } else {
+                    //std::println(" - no insert");
+                }
+            }
+        }
+        //std::println("");
+    }
+    return x;
+}
 
 static void print_binary_permutation(std::span<char> all, std::span<char> rest,
                                      std::size_t part) {
@@ -795,6 +873,76 @@ int main() {
         throw std::exception();
     p::print_all_powers(stderr, *opt);
 
+    auto print_elements = [](auto &&range) {
+        std::println(stderr, "---------------");
+        std::size_t i = 0;
+        for (p::PermutationView perm : range) {
+            std::print(stderr, "{: >2}: ", i++);
+            p::print_permutation_differently(stderr, perm);
+            std::println(stderr, "");
+        }
+        std::println(stderr, "---------------");
+    };
+
+    auto generate_and_print_group = []<typename T>(T &&generating_elements) {
+        auto group =
+            p::generate_subgroup_from(std::forward<T>(generating_elements));
+        const auto &group_ref = group;
+        decltype(print_elements){}(group_ref);
+        return group;
+    };
+
+    std::println(stderr, "");
+    {
+        auto rotation = p::str_to_perm_or_throw("BCDA");
+        auto mirror = p::str_to_perm_or_throw("BADC");
+        std::vector<p::PermutationView> generating_elements{};
+        generating_elements.push_back(rotation);
+        generating_elements.push_back(mirror);
+
+        std::print(stderr, "These are the generating elements:\n"
+                           "- rotation: ");
+        p::print_permutation_differently(stderr, rotation);
+        std::print(stderr, ", and\n"
+                           "- mirror:   ");
+        p::print_permutation_differently(stderr, mirror);
+        std::print(stderr, ".\n");
+
+        std::println(stderr, "\nThis is one variant of the D4 group:");
+        auto D4 = generate_and_print_group(generating_elements);
+
+        auto transformer1 = p::str_to_perm_or_throw("ACBD");
+        auto transformer2 = p::str_to_perm_or_throw("ABDC");
+        std::print(stderr, "transformer 1 is: ");
+        p::print_permutation_differently(stderr, transformer1);
+        std::print(stderr, "\nand these are it's powers: ");
+        p::print_all_powers(stderr, transformer1);
+
+        std::println(stderr, "\nLet us transform the group with it:");
+
+        auto vec1 =
+            D4 | std::views::transform([&](p::PermutationView view) {
+                return p::compose_permutations(transformer1, view).value();
+            }) |
+            std::ranges::to<std::vector>();
+        auto vec2 =
+            D4 | std::views::transform([&](p::PermutationView view) {
+                return p::compose_permutations(transformer2, view).value();
+            }) |
+            std::ranges::to<std::vector>();
+
+        assert(vec1.size() == 8);
+        assert(vec2.size() == 8);
+
+        print_elements(vec1);
+        print_elements(vec2);
+        p::set collection = D4;
+        collection.insert_range(vec1);
+        collection.insert_range(vec2);
+        print_elements(collection);
+
+        //auto unknown = generate_and_print_group(vec);
+    }
     if (!p::print_group_table(4)) {
         std::print(stderr, "error");
         return 1;
