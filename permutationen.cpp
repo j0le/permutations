@@ -148,6 +148,9 @@ struct PermutationView : public Permutation::readonly_span {
     typedef Permutation::readonly_span base;
 
   public:
+    // inherit ctors
+    using base::base;
+
     // ctor
     constexpr PermutationView() : base() {}
     //constexpr PermutationView(const Permutation& perm)
