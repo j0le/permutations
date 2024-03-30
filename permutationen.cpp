@@ -934,9 +934,12 @@ int main() {
         std::println(stderr, "\nThis is one variant of the D4 group:");
         auto D4 = generate_and_print_group(generating_elements);
 
-        p::Permutation transformers[]{p::get_identity_permutation(4),
-                                      p::str_to_perm_or_throw("ACBD"),
-                                      p::str_to_perm_or_throw("ABDC")};
+        const p::Permutation identity = p::get_identity_permutation(4);
+        p::Permutation transformers[]{
+            p::str_to_perm_or_throw("ACBD"),
+            p::str_to_perm_or_throw("ABDC"),
+            identity,
+        };
         static constexpr const std::size_t number_of_transformers =
             sizeof(transformers) / sizeof(transformers[0]);
         static_assert(number_of_transformers == 3z);
@@ -945,6 +948,8 @@ int main() {
             for (auto &t : transformers) {
                 std::print(stderr, "transformer t{} is: ", i++);
                 p::print_permutation_differently(stderr, t);
+                if(p::PermutationView{t} == identity)
+                    std::print(stderr, "  (identity)");
                 std::println(stderr, "");
             }
         }
@@ -975,7 +980,7 @@ int main() {
         }
         // vereinigung disjunkter Mengen: ⊍
         // Vereinigung von Mengen: ∪
-        std::println(stderr, "D4 = M1\nD4 ⊍ M1 ⊍ M2 = S4:");
+        std::println(stderr, "M0 ⊍ M1 ⊍ M2 = S4:");
         print_elements(collection);
         if (std::cmp_not_equal(collection.size(), p::fakultät(4z))) {
             std::println(stderr, "collection is not the whole S4 group");
