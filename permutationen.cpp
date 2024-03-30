@@ -313,6 +313,22 @@ compose_permutations(Permutation::readonly_span a,
     return result;
 }
 
+static std::optional<Permutation>
+compose_permutations(concepts::range_of_PermutationView_likes_c auto &&range) {
+    std::optional<Permutation> opt;
+    for (const auto &perm : range) {
+        if (!opt.has_value()) {
+            opt.emplace(perm);
+            continue;
+        }
+        opt = compose_permutations(*opt, perm);
+        if (!opt.has_value()) {
+            return opt;
+        }
+    }
+    return opt;
+}
+
 Permutation inverse(const Permutation::readonly_span a) {
     Permutation result(a.size());
     auto span = result.get_span();
