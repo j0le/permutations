@@ -239,6 +239,9 @@ namespace concepts {
 template <typename UINT>
 concept Permutation_uint_c = std::same_as<UINT, Permutation::uint_t>;
 
+template <typename PermLike>
+concept PermutationView_like_c = std::convertible_to<PermLike, PermutationView>;
+
 template <typename R>
 concept range_of_PermutationViews_c =
     ::std::ranges::range<R> &&
@@ -247,7 +250,7 @@ concept range_of_PermutationViews_c =
 template <typename R>
 concept range_of_PermutationView_likes_c =
     ::std::ranges::range<R> &&
-    std::convertible_to<std::ranges::range_value_t<R>, PermutationView>;
+    PermutationView_like_c<std::ranges::range_value_t<R>>;
 } //namespace concepts
 
 } // namespace permutations
