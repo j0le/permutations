@@ -657,7 +657,8 @@ static bool compare_by_order(Permutation::readonly_span a,
 }
 
 [[nodiscard]] bool print_group_table(std::uint32_t places,
-                                     bool permute_table = false) {
+                                     bool permute_table = false,
+                                     bool print_html_end = true) {
     const auto max_number_of_digits = 'Z' - 'A' + 1z;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
@@ -706,7 +707,9 @@ static bool compare_by_order(Permutation::readonly_span a,
             return false;
     }
 
-    std::println("</body>\n</html>");
+    if (print_html_end) {
+        std::println("</body>\n</html>");
+    }
     return true;
 }
 inline constexpr auto cmp_less = [](const Permutation &a,
@@ -915,6 +918,12 @@ int main() {
         return group;
     };
 
+    bool HTML_error = false;
+    if (!p::print_group_table(4, false, true)) {
+        std::print(stderr, "error");
+        HTML_error = true;
+    }
+
     std::println(stderr, "");
     {
         auto rotation = p::str_to_perm_or_throw("BCDA");
@@ -974,10 +983,24 @@ int main() {
                 std::println(stderr,
                              "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
                 print_elements(vecs[i]);
+                std::println(stdout, "<br/><p>M{}</p>", i);
+                if (!p::print_table(vecs[i], p::Permutation::uint_t{4u})) {
+                    std::println(stderr, "error printing html table");
+                    HTML_error = true;
+                }
                 collection.insert_range(vecs[i]);
                 i++;
             }
         }
+
+        // Print HTML table
+        std::println(stdout, "<br/><p>sorted by D4</p>");
+        if (!p::print_table(vecs | std::ranges::views::join,
+                            p::Permutation::uint_t{4u})) {
+            std::println(stderr, "error printing html table");
+            HTML_error = true;
+        }
+
         // vereinigung disjunkter Mengen: ⊍
         // Vereinigung von Mengen: ∪
         std::println(stderr, "M0 ⊍ M1 ⊍ M2 = S4:");
@@ -1009,6 +1032,14 @@ int main() {
                 std::println(stderr, "t{0}^-1 * D4 * t{0}  ({1}):", i,
                              (vec_is_group ? "is a group" : "is not a group"));
                 print_elements(vec);
+
+                std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>",
+                             i,
+                             (vec_is_group ? "is a group" : "is not a group"));
+                if (!p::print_table(vec, p::Permutation::uint_t{4u})) {
+                    std::println(stderr, "error printing html table");
+                    HTML_error = true;
+                }
                 i++;
             }
         }
@@ -1101,12 +1132,11 @@ int main() {
             previous = &g_with_t;
         }
     }
-    if (!p::print_group_table(4)) {
-        std::print(stderr, "error");
-        return 1;
-    }
+    std::println(stdout, "</body></html>");
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
 
+    if (HTML_error)
+        return 1;
     return 0;
 }
