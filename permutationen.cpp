@@ -945,8 +945,8 @@ int main() {
 
         const p::Permutation identity = p::get_identity_permutation(4);
         p::Permutation transformers[]{
-            p::str_to_perm_or_throw("ACBD"),
-            p::str_to_perm_or_throw("ABDC"),
+            p::str_to_perm_or_throw("ADBC"),
+            p::str_to_perm_or_throw("ACDB"),
             identity,
         };
         static constexpr const std::size_t number_of_transformers =
