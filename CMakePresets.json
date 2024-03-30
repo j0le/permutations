@@ -1,0 +1,27 @@
+{
+  "version": 5,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "x64 clang++",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-with-preset",
+      "cmakeExecutable": "C:\\msys64\\clang64\\bin\\cmake.exe",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_MAKE_PROGRAM": "C:\\msys64\\clang64\\bin\\ninja.exe",
+	"PERMUTATIONS_IGNORE_ENVVAR_CXXFLAGS": "ON",
+	"PERMUTATIONS_CREATE_PDB": "ON"
+      }
+    }
+  ]
+}
