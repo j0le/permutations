@@ -1119,6 +1119,30 @@ int main() {
             }
             previous = &g_with_t;
         }
+        auto get_conjugator = [](p::Permutation t) {
+            p::Permutation inverse = p::inverse(t);
+            return [t = std::move(t),
+                    i = std::move(inverse)](p::PermutationView v) {
+                p::PermutationView term[]{i, v, t};
+                return p::compose_permutations(term).value();
+            };
+        };
+        auto conjugate_by_t0 = get_conjugator(transformers[0]);
+        // Check that conjugation is a homomorphism
+        for (const auto &a : D4) {
+            for (const auto &b : D4) {
+                auto intermediate_result =
+                    p::compose_permutations(a, b).value();
+                auto A = conjugate_by_t0(a);
+                auto B = conjugate_by_t0(b);
+                auto R1 = p::compose_permutations(A, B).value();
+                auto R2 = conjugate_by_t0(intermediate_result);
+                if (p::PermutationView{R1} == p::PermutationView{R2})
+                    std::println(stderr, "same");
+                else
+                    std::println(stderr, "not same");
+            }
+        }
     }
     std::println(stdout, "</body></html>");
     //print_binary_permutation(10,5); // n over k, binomal coefficient
