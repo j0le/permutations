@@ -39,6 +39,8 @@ template <> struct std::formatter<QuotableString, char> {
     }
 };
 
+static_assert(std::formattable<QuotableString, char>);
+
 int main() {
     QuotableString a("be"), a2(R"( " be " )");
     QuotableString b("a question");
