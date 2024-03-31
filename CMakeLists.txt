@@ -40,3 +40,8 @@ add_executable(experiment
     )
 
 target_compile_features(experiment PUBLIC cxx_std_23)
+
+add_executable(formatting
+    formatting.cpp
+    )
+target_compile_features(formatting PUBLIC cxx_std_23)
