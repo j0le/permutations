@@ -952,15 +952,13 @@ int main() {
         static constexpr const std::size_t number_of_transformers =
             sizeof(transformers) / sizeof(transformers[0]);
         static_assert(number_of_transformers == 3z);
-        {
-            size_t i = 1;
-            for (auto &t : transformers) {
-                std::print(stderr, "transformer t{} is: ", i++);
-                p::print_permutation_differently(stderr, t);
-                if(p::PermutationView{t} == identity)
-                    std::print(stderr, "  (identity)");
-                std::println(stderr, "");
-            }
+
+        for (size_t i = 1; auto &t : transformers) {
+            std::print(stderr, "transformer t{} is: ", i++);
+            p::print_permutation_differently(stderr, t);
+            if (p::PermutationView{t} == identity)
+                std::print(stderr, "  (identity)");
+            std::println(stderr, "");
         }
 
         std::println(stderr, "\nLet us transform the group with it:");
@@ -968,29 +966,24 @@ int main() {
         std::vector<p::Permutation> vecs[number_of_transformers]{};
         p::set collection;
 
-        {
-            std::size_t i = 0;
-            for (p::concepts::PermutationView_like_c auto &trans :
-                 transformers) {
+        for (std::size_t i = 0;
+             p::concepts::PermutationView_like_c auto &trans : transformers) {
 
-                vecs[i] = D4 |
-                          std::views::transform([&](p::PermutationView view) {
-                              p::PermutationView term[]{view, trans};
-                              return p::compose_permutations(term).value();
-                          }) |
-                          std::ranges::to<std::vector>();
+            vecs[i] = D4 | std::views::transform([&](p::PermutationView view) {
+                          p::PermutationView term[]{view, trans};
+                          return p::compose_permutations(term).value();
+                      }) |
+                      std::ranges::to<std::vector>();
 
-                std::println(stderr,
-                             "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
-                print_elements(vecs[i]);
-                std::println(stdout, "<br/><p>M{}</p>", i);
-                if (!p::print_table(vecs[i], p::Permutation::uint_t{4u})) {
-                    std::println(stderr, "error printing html table");
-                    HTML_error = true;
-                }
-                collection.insert_range(vecs[i]);
-                i++;
+            std::println(stderr, "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
+            print_elements(vecs[i]);
+            std::println(stdout, "<br/><p>M{}</p>", i);
+            if (!p::print_table(vecs[i], p::Permutation::uint_t{4u})) {
+                std::println(stderr, "error printing html table");
+                HTML_error = true;
             }
+            collection.insert_range(vecs[i]);
+            i++;
         }
 
         // Print HTML table
@@ -1013,35 +1006,30 @@ int main() {
         std::println(stderr,
                      "\nLet us conjugate the group D4 with the transformers:");
 
-        {
-            size_t i = 0;
-            for (p::concepts::PermutationView_like_c auto &trans :
-                 transformers) {
-                p::concepts::PermutationView_like_c auto trans_invers =
-                    p::inverse(trans);
+        for (size_t i = 0;
+             p::concepts::PermutationView_like_c auto &trans : transformers) {
+            p::concepts::PermutationView_like_c auto trans_invers =
+                p::inverse(trans);
 
-                auto vec =
-                    D4 | std::views::transform([&](p::PermutationView view) {
-                        p::PermutationView term[]{trans_invers, view, trans};
-                        return p::compose_permutations(term).value();
-                    }) |
-                    std::ranges::to<std::vector>();
-                auto group = p::generate_subgroup_from(vec);
-                bool vec_is_group = vec.size() == group.size();
+            auto vec = D4 | std::views::transform([&](p::PermutationView view) {
+                           p::PermutationView term[]{trans_invers, view, trans};
+                           return p::compose_permutations(term).value();
+                       }) |
+                       std::ranges::to<std::vector>();
+            auto group = p::generate_subgroup_from(vec);
+            bool vec_is_group = vec.size() == group.size();
 
-                std::println(stderr, "t{0}^-1 * D4 * t{0}  ({1}):", i,
-                             (vec_is_group ? "is a group" : "is not a group"));
-                print_elements(vec);
+            std::println(stderr, "t{0}^-1 * D4 * t{0}  ({1}):", i,
+                         (vec_is_group ? "is a group" : "is not a group"));
+            print_elements(vec);
 
-                std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>",
-                             i,
-                             (vec_is_group ? "is a group" : "is not a group"));
-                if (!p::print_table(vec, p::Permutation::uint_t{4u})) {
-                    std::println(stderr, "error printing html table");
-                    HTML_error = true;
-                }
-                i++;
+            std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>", i,
+                         (vec_is_group ? "is a group" : "is not a group"));
+            if (!p::print_table(vec, p::Permutation::uint_t{4u})) {
+                std::println(stderr, "error printing html table");
+                HTML_error = true;
             }
+            i++;
         }
 
         std::println(stderr, "\nNow we only transform the generators, and "
