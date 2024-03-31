@@ -1006,15 +1006,20 @@ int main() {
         std::println(stderr,
                      "\nLet us conjugate the group D4 with the transformers:");
 
+        auto get_conjugator = [](p::Permutation t) {
+            p::Permutation inverse = p::inverse(t);
+            return [t = std::move(t),
+                    i = std::move(inverse)](p::PermutationView v) {
+                p::PermutationView term[]{i, v, t};
+                return p::compose_permutations(term).value();
+            };
+        };
+
         for (size_t i = 0;
              p::concepts::PermutationView_like_c auto &trans : transformers) {
-            p::concepts::PermutationView_like_c auto trans_invers =
-                p::inverse(trans);
+            const auto conjugate = get_conjugator(trans);
 
-            auto vec = D4 | std::views::transform([&](p::PermutationView view) {
-                           p::PermutationView term[]{trans_invers, view, trans};
-                           return p::compose_permutations(term).value();
-                       }) |
+            auto vec = D4 | std::views::transform(conjugate) |
                        std::ranges::to<std::vector>();
             auto group = p::generate_subgroup_from(vec);
             bool vec_is_group = vec.size() == group.size();
@@ -1069,20 +1074,16 @@ int main() {
 
         std::multiset<group_with_transformer, decltype(cmp_groups)> groups{};
 
-        for (auto &t : vecs | std::ranges::views::join) {
+        for (const auto &t : vecs | std::ranges::views::join) {
             std::print(stderr, "Conjugate with transformer: ");
             p::print_permutation_differently(stderr, t);
             std::println(stderr, "");
 
-            auto t_invers = p::inverse(t);
+            const auto conjugate = get_conjugator(t);
 
-            auto new_generators =
-                generating_elements |
-                std::views::transform([&](p::PermutationView view) {
-                    p::PermutationView term[]{t_invers, view, t};
-                    return p::compose_permutations(term).value();
-                }) |
-                std::ranges::to<std::vector>();
+            auto new_generators = generating_elements |
+                                  std::views::transform(conjugate) |
+                                  std::ranges::to<std::vector>();
             std::println(stderr, "The new generators are:");
             for (auto &g : new_generators) {
                 std::print(stderr, "- ");
@@ -1119,14 +1120,6 @@ int main() {
             }
             previous = &g_with_t;
         }
-        auto get_conjugator = [](p::Permutation t) {
-            p::Permutation inverse = p::inverse(t);
-            return [t = std::move(t),
-                    i = std::move(inverse)](p::PermutationView v) {
-                p::PermutationView term[]{i, v, t};
-                return p::compose_permutations(term).value();
-            };
-        };
         auto conjugate_by_t0 = get_conjugator(transformers[0]);
         // Check that conjugation is a homomorphism
         for (const auto &a : D4) {
