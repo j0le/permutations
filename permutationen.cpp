@@ -299,22 +299,32 @@ get_other_permutation_representation(const Permutation::readonly_span span) {
 template <>
 struct std::formatter<permutations::PermutationView, char> {
 
-    bool do_other_representation = false;
+    unsigned repr_a : 1 = 0;
+    unsigned repr_b : 1 = 0;
 
     template <class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext &ctx) {
+
         auto it = ctx.begin();
-        if (it == ctx.end())
-            return it;
+        for (; it != ctx.end(); it++) {
+            char c = *it;
+            switch (c) {
+            case 'a':
+                repr_a = true;
+                break;
 
-        if (*it == '#') {
-            do_other_representation = true;
-            ++it;
+            case 'b':
+                repr_b = true;
+                break;
+
+            case '}':
+                return it;
+
+            default:
+                throw std::format_error(
+                    "Invalid format args for PermutationView.");
+            }
         }
-
-        if (*it != '}')
-            throw std::format_error("Invalid format args for PermutationView.");
-
         return it;
     }
 
@@ -323,24 +333,35 @@ struct std::formatter<permutations::PermutationView, char> {
                                 FmtContext &ctx) const {
         using namespace permutations;
         const std::size_t size = perm_view.size();
-        auto view =
-            perm_view |
-            std::views::transform([size](Permutation::uint_t i) -> char {
-                auto opt = index_to_char(i, size);
-                if (!opt)
-                    throw PermutationException();
-                return *opt;
-            });
-        static_assert(
-            std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
 
-        auto out = std::ranges::copy(view, ctx.out()).out;
-        if (do_other_representation) {
+        bool repr_a = this->repr_a;
+        bool repr_b = this->repr_b;
+        if (!repr_a && !repr_b)
+            repr_a = true;
+
+        auto out = ctx.out();
+
+        if (repr_a) {
+            auto view = perm_view | std::views::transform(
+                                        [size](Permutation::uint_t i) -> char {
+                                            auto opt = index_to_char(i, size);
+                                            if (!opt)
+                                                throw PermutationException();
+                                            return *opt;
+                                        });
+            static_assert(
+                std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
+
+            out = std::ranges::copy(view, out).out;
+        }
+        if (repr_a && repr_b) {
+            out = std::ranges::copy(std::string_view{" - "}, out).out;
+        }
+        if (repr_b) {
             auto other_repr_opt =
                 get_other_permutation_representation(perm_view);
             if (!other_repr_opt.has_value())
                 throw PermutationException();
-            out = std::ranges::copy(std::string_view{" - "}, out).out;
             out = std::ranges::copy(*other_repr_opt, out).out;
         }
         return out;
@@ -401,7 +422,7 @@ Permutation inverse(const Permutation::readonly_span a) {
 
 static void print_permutation_differently(std::FILE *stream,
                                           Permutation::readonly_span view) {
-    std::print(stream, "{:#}", PermutationView{view});
+    std::print(stream, "{:ab}", PermutationView{view});
 }
 
 static void print_span(std::span<char> span) {
