@@ -254,6 +254,43 @@ concept range_of_PermutationView_likes_c =
     PermutationView_like_c<std::ranges::range_value_t<R>>;
 } //namespace concepts
 
+static std::optional<std::string>
+get_other_permutation_representation(const Permutation::readonly_span span) {
+    // Print permutations like in the book "Elementar(st)e Gruppentheorie"
+    // by Tobias Glosauer,
+    // Chapter 3 "Gruppen ohne Ende",
+    // Section 3.2 "Symetrische Gruppen", page 51
+    std::optional<std::string> ret(std::in_place);
+    const constexpr auto max_size = 'Z' - 'A' + '\01';
+    static_assert(std::cmp_equal(26, max_size));
+    assert(std::cmp_less_equal(span.size(), max_size));
+    //auto found = std::make_unique<bool[]>(view.size());
+    std::bitset<max_size> found{};
+    for (std::size_t i = 0z; i < span.size(); ++i) {
+        if (found.test(i)) {
+            continue;
+        }
+        found.set(i);
+        char current_letter = 'A' + i;
+        *ret += '(';
+        *ret += current_letter;
+        size_t next_index = i;
+        while (true) {
+            next_index = span[next_index];
+            std::optional<char> next_letter_opt =
+                index_to_char(next_index, span.size());
+            if (!next_letter_opt)
+                return std::nullopt;
+            if (next_index == i)
+                break;
+            found.set(next_index);
+            *ret += *next_letter_opt;
+        }
+        *ret += ')';
+    }
+    return ret;
+}
+
 } // namespace permutations
 
 // https://fmt.dev/latest/api.html#formatting-user-defined-types
@@ -262,11 +299,18 @@ concept range_of_PermutationView_likes_c =
 template <>
 struct std::formatter<permutations::PermutationView, char> {
 
+    bool do_other_representation = false;
+
     template <class ParseContext>
     constexpr ParseContext::iterator parse(ParseContext &ctx) {
         auto it = ctx.begin();
         if (it == ctx.end())
             return it;
+
+        if (*it == '#') {
+            do_other_representation = true;
+            ++it;
+        }
 
         if (*it != '}')
             throw std::format_error("Invalid format args for PermutationView.");
@@ -289,7 +333,17 @@ struct std::formatter<permutations::PermutationView, char> {
             });
         static_assert(
             std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
-        return std::ranges::copy(view, ctx.out()).out;
+
+        auto out = std::ranges::copy(view, ctx.out()).out;
+        if (do_other_representation) {
+            auto other_repr_opt =
+                get_other_permutation_representation(perm_view);
+            if (!other_repr_opt.has_value())
+                throw PermutationException();
+            out = std::ranges::copy(std::string_view{" - "}, out).out;
+            out = std::ranges::copy(*other_repr_opt, out).out;
+        }
+        return out;
     }
 };
 static_assert(std::formattable<permutations::PermutationView, char>);
@@ -345,48 +399,9 @@ Permutation inverse(const Permutation::readonly_span a) {
     return result;
 }
 
-static std::optional<std::string>
-get_other_permutation_representation(const Permutation::readonly_span span) {
-    // Print permutations like in the book "Elementar(st)e Gruppentheorie"
-    // by Tobias Glosauer,
-    // Chapter 3 "Gruppen ohne Ende",
-    // Section 3.2 "Symetrische Gruppen", page 51
-    std::optional<std::string> ret(std::in_place);
-    const constexpr auto max_size = 'Z' - 'A' + '\01';
-    static_assert(std::cmp_equal(26, max_size));
-    assert(std::cmp_less_equal(span.size(), max_size));
-    //auto found = std::make_unique<bool[]>(view.size());
-    std::bitset<max_size> found{};
-    for (std::size_t i = 0z; i < span.size(); ++i) {
-        if (found.test(i)) {
-            continue;
-        }
-        found.set(i);
-        char current_letter = 'A' + i;
-        *ret += '(';
-        *ret += current_letter;
-        size_t next_index = i;
-        while (true) {
-            next_index = span[next_index];
-            std::optional<char> next_letter_opt =
-                index_to_char(next_index, span.size());
-            if (!next_letter_opt)
-                return std::nullopt;
-            if (next_index == i)
-                break;
-            found.set(next_index);
-            *ret += *next_letter_opt;
-        }
-        *ret += ')';
-    }
-    return ret;
-}
 static void print_permutation_differently(std::FILE *stream,
                                           Permutation::readonly_span view) {
-    auto opt = get_other_permutation_representation(view);
-    if (!opt)
-        throw std::exception();
-    std::print(stream, "{} - {}", PermutationView{view}.to_string(), *opt);
+    std::print(stream, "{:#}", PermutationView{view});
 }
 
 static void print_span(std::span<char> span) {
