@@ -1,3 +1,4 @@
+#include <__format/concepts.h>
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -255,7 +256,6 @@ concept range_of_PermutationView_likes_c =
 
 } // namespace permutations
 
-/*
 // https://fmt.dev/latest/api.html#formatting-user-defined-types
 // https://en.cppreference.com/w/cpp/utility/format/formatter
 // template specialization must be in global namespace
@@ -276,7 +276,7 @@ struct std::formatter<permutations::PermutationView, char> {
 
     template <typename FmtContext>
     FmtContext::iterator format(const permutations::PermutationView &perm_view,
-                                FmtContext &ctx) {
+                                FmtContext &ctx) const {
         using namespace permutations;
         const std::size_t size = perm_view.size();
         auto view =
@@ -291,7 +291,8 @@ struct std::formatter<permutations::PermutationView, char> {
             std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
         std::ranges::copy(view, ctx.out());
     }
-};*/
+};
+static_assert(std::formattable<permutations::PermutationView, char>);
 
 namespace permutations {
 
