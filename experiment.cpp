@@ -131,7 +131,7 @@ template <> struct std::formatter<printable, char> {
 
     template <typename FmtContext>
     typename FmtContext::iterator format(const printable &perm_view,
-                                         FmtContext &ctx) {
+                                         FmtContext &ctx) const {
         //using namespace permutations;
         static constexpr const std::size_t size = 4;
         uint32_t int_view[size]{0, 1, 2, 3};

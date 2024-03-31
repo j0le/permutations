@@ -28,7 +28,8 @@ template <> struct std::formatter<QuotableString, char> {
     }
 
     template <class FmtContext>
-    FmtContext::iterator format(const QuotableString &s, FmtContext &ctx) {
+    FmtContext::iterator format(const QuotableString &s,
+                                FmtContext &ctx) const {
         std::ostringstream out;
         if (quoted)
             out << std::quoted(s);
