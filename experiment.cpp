@@ -1,5 +1,9 @@
+#include <__format/concepts.h>
+#include <chrono>
+#include <format>
 #include <memory>
 #include <print>
+#include <ranges>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -106,12 +110,55 @@ void experiment_optional() {
 
 void unique_ptr() { std::unique_ptr<experiment_t[]> p(new experiment_t[3]{}); }
 
+struct printable {};
+
+// https://fmt.dev/latest/api.html#formatting-user-defined-types
+// https://en.cppreference.com/w/cpp/utility/format/formatter
+// template specialization must be in global namespace
+template <> struct std::formatter<printable, char> {
+
+    template <class ParseContext>
+    constexpr typename ParseContext::iterator parse(ParseContext &ctx) {
+        auto it = ctx.begin();
+        if (it == ctx.end())
+            return it;
+
+        if (*it != '}')
+            throw std::format_error("Invalid format args for PermutationView.");
+
+        return it;
+    }
+
+    template <typename FmtContext>
+    typename FmtContext::iterator format(const printable &perm_view,
+                                         FmtContext &ctx) {
+        //using namespace permutations;
+        static constexpr const std::size_t size = 4;
+        uint32_t int_view[size]{0, 1, 2, 3};
+        auto view = int_view | std::views::transform(
+                                   [](uint32_t i) -> char { return 'A' + i; });
+        static_assert(
+            std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
+        return std::ranges::copy(view, ctx.out()).out;
+    }
+};
+
+static_assert(std::formattable<printable, char>);
+
+void check_if_printable() {
+    std::formatter<std::string, char> x;
+    std::formatter<std::chrono::month, char> y;
+    printable p{};
+    std::print("{}", p);
+}
+
 int main() {
     //experiment_std_array();
     //std::println("--------------------");
     //experiment_std_vector();
     //std::println("--------------------");
     //experiment_optional();
-    unique_ptr();
+    //unique_ptr();
+    check_if_printable();
     return 0;
 }
