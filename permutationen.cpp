@@ -289,7 +289,7 @@ struct std::formatter<permutations::PermutationView, char> {
             });
         static_assert(
             std::same_as<std::ranges::range_value_t<decltype(view)>, char>);
-        std::ranges::copy(view, ctx.out());
+        return std::ranges::copy(view, ctx.out()).out;
     }
 };
 static_assert(std::formattable<permutations::PermutationView, char>);
