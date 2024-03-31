@@ -134,6 +134,7 @@ class Permutation {
     constexpr readonly_span get_readonly_span() const {
         return std::span<const uint_t>{this->m_span};
     }
+    constexpr PermutationView get_perm_view() const;
 
     constexpr std::string to_string() const;
 
@@ -205,6 +206,9 @@ struct PermutationView : public Permutation::readonly_span {
 
 constexpr Permutation::operator PermutationView() const {
     return PermutationView{this->get_readonly_span()};
+}
+constexpr PermutationView Permutation::get_perm_view() const {
+    return this->operator PermutationView();
 }
 
 constexpr std::string Permutation::to_string() const {
@@ -668,7 +672,7 @@ template <std::ranges::range R, concepts::uint32_c UInt32>
                 return false;
             new_order.push_back(PermutationView{perms[index]});
         }
-        std::println("<br/><p>Tabelle {}, {}</p>", counter, view.to_string());
+        std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
         if (!print_table(new_order, places))
             return false;
         counter++;
@@ -779,8 +783,8 @@ set generate_subgroup_from(
     static constexpr auto cmp_wrapper = [](const Permutation &a,
                                            const Permutation &b) -> bool {
         bool less = cmp_less_t{}(a, b);
-        std::println("compare {} {} {}", a.to_string(), (less ? "< " : ">="),
-                     b.to_string());
+        std::println("compare {} {} {}", a.get_perm_view(),
+                     (less ? "< " : ">="), b.get_perm_view());
         return less;
     };
 
@@ -902,11 +906,11 @@ void check_expect(PermutationView a, PermutationView b,
 
     auto res = result.value();
     if (res == expected)
-        std::println(stderr, "{} x {} = {} (correct)", a.to_string(),
-                     b.to_string(), res.to_string());
+        std::println(stderr, "{} x {} = {} (correct)", a, b,
+                     res.get_perm_view());
     else {
-        std::println(stderr, "{} x {} = {}, expected {}", a.to_string(),
-                     b.to_string(), res.to_string(), expected.to_string());
+        std::println(stderr, "{} x {} = {}, expected {}", a, b,
+                     res.get_perm_view(), expected);
         assert(res == expected);
         throw std::exception();
     }
@@ -940,9 +944,7 @@ int main() {
         std::println(stderr, "---------------");
         std::size_t i = 0;
         for (p::PermutationView perm : range) {
-            std::print(stderr, "{: >2}: ", i++);
-            p::print_permutation_differently(stderr, perm);
-            std::println(stderr, "");
+            std::println(stderr, "{: >2}: {:ab}", i++, perm);
         }
         std::println(stderr, "---------------");
     };
@@ -969,13 +971,11 @@ int main() {
         generating_elements.push_back(rotation);
         generating_elements.push_back(mirror);
 
-        std::print(stderr, "These are the generating elements:\n"
-                           "- rotation: ");
-        p::print_permutation_differently(stderr, rotation);
-        std::print(stderr, ", and\n"
-                           "- mirror:   ");
-        p::print_permutation_differently(stderr, mirror);
-        std::print(stderr, ".\n");
+        std::println(stderr,
+                     "These are the generating elements:\n"
+                     "- rotation: {:ab}, and\n"
+                     "- mirror:   {:ab}",
+                     rotation.get_perm_view(), mirror.get_perm_view());
 
         std::println(stderr, "\nThis is one variant of the D4 group:");
         auto D4 = generate_and_print_group(generating_elements);
