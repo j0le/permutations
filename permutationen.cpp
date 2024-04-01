@@ -373,6 +373,23 @@ struct std::formatter<permutations::PermutationView, char> {
 };
 static_assert(std::formattable<permutations::PermutationView, char>);
 
+template <> struct std::formatter<permutations::Permutation, char> {
+
+    std::formatter<permutations::PermutationView> view_formatter{};
+
+    template <class ParseContext>
+    constexpr ParseContext::iterator parse(ParseContext &ctx) {
+        return view_formatter.parse(ctx);
+    }
+
+    template <typename FmtContext>
+    FmtContext::iterator format(const permutations::Permutation &perm,
+                                FmtContext &ctx) const {
+        return view_formatter.format(permutations::PermutationView{perm}, ctx);
+    }
+};
+static_assert(std::formattable<permutations::Permutation, char>);
+
 namespace permutations {
 
 // Composition of permutations as if they are functions:
@@ -424,11 +441,6 @@ Permutation inverse(const Permutation::readonly_span a) {
     return result;
 }
 
-static void print_permutation_differently(std::FILE *stream,
-                                          Permutation::readonly_span view) {
-    std::print(stream, "{:ab}", PermutationView{view});
-}
-
 static void print_span(std::span<char> span) {
     std::string_view view(span.data(), span.size());
     std::print("|{}|\n", view);
@@ -469,7 +481,7 @@ static void print_all_powers(std::FILE *stream,
             break;
         }
         perm = std::move(*perm_opt);
-        print_permutation_differently(stream, perm);
+        std::print(stream, "{:ab}", perm);
         if (perm == identity)
             break;
         std::print(stream, ",  ");
@@ -542,7 +554,7 @@ template <std::size_t places> [[nodiscard]] bool print_permutation() {
 
     auto print = [](const Permutation &perm) -> void {
         //print_span(view);
-        //print_permutation_differently(stdout, view);
+        //std::print(stdout, "{:ab}", view);
         print_all_powers(stdout, perm);
     };
 
@@ -564,7 +576,7 @@ template <concepts::range_of_PermutationView_likes_c R,
     auto print_cell = [](PermutationView perm, std::string_view row,
                          std::string_view column) -> bool {
         bool is_header = row == "header" || column == "header";
-        std::string perm_str = perm.to_string();
+        std::string perm_str = std::format("{}", perm);
         const auto &hover_text = perm_str;
         auto display_text_opt = get_other_permutation_representation(perm);
         if (!display_text_opt) {
@@ -783,8 +795,7 @@ set generate_subgroup_from(
     static constexpr auto cmp_wrapper = [](const Permutation &a,
                                            const Permutation &b) -> bool {
         bool less = cmp_less_t{}(a, b);
-        std::println("compare {} {} {}", a.get_perm_view(),
-                     (less ? "< " : ">="), b.get_perm_view());
+        std::println("compare {} {} {}", a, (less ? "< " : ">="), b);
         return less;
     };
 
@@ -798,7 +809,7 @@ set generate_subgroup_from(
 
         //std::println("----");
         //for(auto&x : vec){
-        //    std::print("{}, ", x.to_string());
+        //    std::print("{}, ", x);
         //}
         //std::println("");
 
@@ -813,7 +824,7 @@ set generate_subgroup_from(
             }
             //size_t kkk =0;
             for (auto &p : products) {
-                //std::println("{},{}: {}", i, kkk++, p.to_string());
+                //std::println("{},{}: {}", i, kkk++, p);
                 if (!x.contains(p)) {
                     //std::println(" - insert");
                     x.insert(p);
@@ -906,11 +917,9 @@ void check_expect(PermutationView a, PermutationView b,
 
     auto res = result.value();
     if (res == expected)
-        std::println(stderr, "{} x {} = {} (correct)", a, b,
-                     res.get_perm_view());
+        std::println(stderr, "{} x {} = {} (correct)", a, b, res);
     else {
-        std::println(stderr, "{} x {} = {}, expected {}", a, b,
-                     res.get_perm_view(), expected);
+        std::println(stderr, "{} x {} = {}, expected {}", a, b, res, expected);
         assert(res == expected);
         throw std::exception();
     }
@@ -975,7 +984,7 @@ int main() {
                      "These are the generating elements:\n"
                      "- rotation: {:ab}, and\n"
                      "- mirror:   {:ab}",
-                     rotation.get_perm_view(), mirror.get_perm_view());
+                     rotation, mirror);
 
         std::println(stderr, "\nThis is one variant of the D4 group:");
         auto D4 = generate_and_print_group(generating_elements);
@@ -991,11 +1000,9 @@ int main() {
         static_assert(number_of_transformers == 3z);
 
         for (size_t i = 1; auto &t : transformers) {
-            std::print(stderr, "transformer t{} is: ", i++);
-            p::print_permutation_differently(stderr, t);
-            if (p::PermutationView{t} == identity)
-                std::print(stderr, "  (identity)");
-            std::println(stderr, "");
+            std::println(
+                stderr, "transformer t{} is: {:ab} {}", i++, t,
+                (p::PermutationView{t} == identity ? "  (identity)" : ""));
         }
 
         std::println(stderr, "\nLet us transform the group with it:");
@@ -1112,9 +1119,7 @@ int main() {
         std::multiset<group_with_transformer, decltype(cmp_groups)> groups{};
 
         for (const auto &t : vecs | std::ranges::views::join) {
-            std::print(stderr, "Conjugate with transformer: ");
-            p::print_permutation_differently(stderr, t);
-            std::println(stderr, "");
+            std::println(stderr, "Conjugate with transformer: {:ab}", t);
 
             const auto conjugate = get_conjugator(t);
 
@@ -1123,9 +1128,7 @@ int main() {
                                   std::ranges::to<std::vector>();
             std::println(stderr, "The new generators are:");
             for (auto &g : new_generators) {
-                std::print(stderr, "- ");
-                p::print_permutation_differently(stderr, g);
-                std::println(stderr, "");
+                std::println(stderr, "- {:ab}", g);
             }
             std::println(stderr, "The group generated by them is:");
             groups.insert(group_with_transformer{
@@ -1149,9 +1152,8 @@ int main() {
                     equal_to_previous = true;
                 }
             }
-            std::print(stderr, "Conjugated with transformer: ");
-            p::print_permutation_differently(stderr, g_with_t.transformer);
-            std::println(stderr, "");
+            std::println(stderr, "Conjugated with transformer: {:ab}",
+                         g_with_t.transformer);
             if (!equal_to_previous) {
                 print_elements(g_with_t.group);
             }
