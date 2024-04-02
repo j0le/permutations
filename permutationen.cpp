@@ -753,10 +753,11 @@ template <std::ranges::range R, concepts::uint32_c UInt32>
                                   all);
 }
 
-static bool compare_by_order(Permutation::readonly_span a,
-                             Permutation::readonly_span b) {
-    auto order_a_opt = get_order<symetric_group>(a);
-    auto order_b_opt = get_order<symetric_group>(b);
+template <group_config_c gc>
+bool compare_by_order(typename gc::element_view_type a,
+                      typename gc::element_view_type b) {
+    auto order_a_opt = get_order<gc>(a);
+    auto order_b_opt = get_order<gc>(b);
     if (order_a_opt.has_value() && order_b_opt.has_value())
         return *order_a_opt < *order_b_opt;
     else if (order_a_opt.has_value() == order_b_opt.has_value())
@@ -811,7 +812,7 @@ static bool compare_by_order(Permutation::readonly_span a,
                         });
         auto vector_of_PermutationViews =
             range_of_PermutationViews | std::ranges::to<std::vector>();
-        std::ranges::sort(vector_of_PermutationViews, compare_by_order);
+        std::ranges::sort(vector_of_PermutationViews, compare_by_order<symetric_group>);
         if (!print_table<symetric_group>(vector_of_PermutationViews, group_config))
             return false;
         std::println("<br/><p>unsorted:</p>");
