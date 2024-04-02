@@ -34,7 +34,7 @@ struct two_by_two_matrix{
 inline constexpr auto cmp_2by2_matrix = [](two_by_two_matrix a,
                                            two_by_two_matrix b) -> bool {
     for (size_t i = 0; i < 2z; i++)
-        for (size_t jj = 0; jj < 2z; i++) {
+        for (size_t jj = 0; jj < 2z; jj++) {
             bool A = a.cells[i][jj];
             bool B = b.cells[i][jj];
             if (A == B)
@@ -45,6 +45,21 @@ inline constexpr auto cmp_2by2_matrix = [](two_by_two_matrix a,
         }
     return false;
 };
+
+constexpr bool equal_by_cmp_2by2_matrix(two_by_two_matrix a,
+                                        two_by_two_matrix b) {
+    return !cmp_2by2_matrix(a, b) && !cmp_2by2_matrix(b, a);
+}
+
+static_assert(equal_by_cmp_2by2_matrix(
+    two_by_two_matrix{.cells{{false, true}, {false, true}}},
+    two_by_two_matrix{.cells{{false, true}, {false, true}}}));
+static_assert(!equal_by_cmp_2by2_matrix(
+    two_by_two_matrix{.cells{{false, false}, {false, true}}},
+    two_by_two_matrix{.cells{{false, true}, {false, true}}}));
+static_assert(
+    cmp_2by2_matrix(two_by_two_matrix{.cells{{false, false}, {false, true}}},
+                    two_by_two_matrix{.cells{{false, true}, {false, true}}}));
 
 struct group_bla{
     using element_type = two_by_two_matrix;
@@ -66,6 +81,10 @@ template <>
 std::optional<two_by_two_matrix>
 compose_permutations<group_bla>(two_by_two_matrix a, two_by_two_matrix b) {
 
+    static_assert(
+        two_by_two_matrix{.cells{{false, true}, {false, false}}}.cells[0][1] ==
+            true,
+        "Check that this is the order of indexs [row][column]");
     two_by_two_matrix ret{.cells{
         {(a.cells[0][0] && b.cells[0][0]) != (a.cells[0][1] && b.cells[1][0]),
          (a.cells[0][0] && b.cells[0][1]) != (a.cells[0][1] && b.cells[1][1])},
