@@ -16,14 +16,14 @@ struct two_by_two_matrix{
     constexpr explicit operator group_bla() const;
     constexpr bool operator==(const two_by_two_matrix &other) const {
         for (size_t i = 0; i < 2z; i++)
-            for (size_t jj = 0; jj < 2z; i++) {
+            for (size_t jj = 0; jj < 2z; jj++) {
                 bool A = this->cells[i][jj];
                 bool B = other.cells[i][jj];
                 if (A == B)
                     continue;
                 return false;
             }
-        return false;
+        return true;
     }
     constexpr std::string to_string() const {
         return std::format("M{}{}{}{}", cells[0][0], cells[0][1], cells[1][0],
@@ -54,6 +54,8 @@ constexpr bool equal_by_cmp_2by2_matrix(two_by_two_matrix a,
 static_assert(equal_by_cmp_2by2_matrix(
     two_by_two_matrix{.cells{{false, true}, {false, true}}},
     two_by_two_matrix{.cells{{false, true}, {false, true}}}));
+static_assert(two_by_two_matrix{.cells{{false, true}, {false, true}}} ==
+              two_by_two_matrix{.cells{{false, true}, {false, true}}});
 static_assert(!equal_by_cmp_2by2_matrix(
     two_by_two_matrix{.cells{{false, false}, {false, true}}},
     two_by_two_matrix{.cells{{false, true}, {false, true}}}));
