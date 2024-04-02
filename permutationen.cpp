@@ -815,9 +815,9 @@ bool compare_by_order(typename gc::element_view_type a,
         std::ranges::sort(vector_of_PermutationViews, compare_by_order<symetric_group>);
         if (!print_table<symetric_group>(vector_of_PermutationViews, group_config))
             return false;
-        std::println("<br/><p>unsorted:</p>");
-        if (!print_table<symetric_group>(range_of_PermutationViews, group_config))
-            return false;
+        //std::println("<br/><p>unsorted:</p>");
+        //if (!print_table<symetric_group>(range_of_PermutationViews, group_config))
+        //    return false;
     }
 
     if (print_html_end) {
@@ -991,6 +991,14 @@ bool print_bla_group() {
     return print_table<group_bla>(vec, group_bla{});
 }
 
+auto get_conjugator(Permutation t) {
+    Permutation i = inverse(t);
+    return [t = std::move(t), i = std::move(i)](PermutationView v) {
+        PermutationView term[]{i, v, t};
+        return compose_permutations<symetric_group>(term).value();
+    };
+}
+
 bool print_some_sub_groups_of_S4() {
     namespace p = ::permutations;
 
@@ -1089,15 +1097,6 @@ bool print_some_sub_groups_of_S4() {
 
     std::println(stderr,
                  "\nLet us conjugate the group D4 with the transformers:");
-
-    auto get_conjugator = [](p::Permutation t) {
-        p::Permutation inverse = p::inverse(t);
-        return
-            [t = std::move(t), i = std::move(inverse)](p::PermutationView v) {
-                p::PermutationView term[]{i, v, t};
-                return p::compose_permutations<p::symetric_group>(term).value();
-            };
-    };
 
     for (size_t i = 0;
          p::concepts::PermutationView_like_c auto &trans : transformers) {
@@ -1222,34 +1221,69 @@ bool print_some_sub_groups_of_S4() {
 } // namespace permutations
 
 int main() {
-    namespace p = permutations;
+    using namespace permutations;
 
-    p::check_expect("ABC", "ABC", "ABC");
-    p::check_expect("ABC", "CAB", "CAB");
-    p::check_expect("CAB", "ABC", "CAB");
-    p::check_expect(           p::str_to_perm_or_throw("CAB"),
-                    p::inverse(p::str_to_perm_or_throw("CAB")),
-                               p::str_to_perm_or_throw("ABC"));
+    check_expect("ABC", "ABC", "ABC");
+    check_expect("ABC", "CAB", "CAB");
+    check_expect("CAB", "ABC", "CAB");
+    check_expect(           str_to_perm_or_throw("CAB"),
+                    inverse(str_to_perm_or_throw("CAB")),
+                            str_to_perm_or_throw("ABC"));
 
     std::string murks = "BCA";
-    auto opt = p::str_to_perm(murks);
+    auto opt = str_to_perm(murks);
     if (!opt)
         throw std::exception();
-    p::print_all_powers(stderr, *opt);
+    print_all_powers(stderr, *opt);
 
     bool HTML_error = false;
-    if (!p::print_group_table(3, false, true)) {
+    if (!print_group_table(3, false, true)) {
         std::print(stderr, "error");
         HTML_error = true;
     }
+    if (true) {
+        std::array<Permutation, 2> array{str_to_perm_or_throw("CAB"),
+                                         str_to_perm_or_throw("ACB")};
+        auto set = generate_subgroup_from<symetric_group>(array);
+        std::vector vec = set | std::ranges::to<std::vector>();
+        std::ranges::sort(vec, compare_by_order<symetric_group>);
+        std::println("<p>the first:</p>");
+        if (!print_table<symetric_group>(vec, {.places = 3}))
+            HTML_error = true;
 
-    std::println(stderr, "");
-    if (false) {
-        if (!p::print_some_sub_groups_of_S4())
+        auto conjugate_by_elm_of_order3 =
+            get_conjugator(str_to_perm_or_throw("CAB"));
+
+        auto vec2 = vec | std::views::transform(conjugate_by_elm_of_order3) |
+                    std::ranges::to<std::vector>();
+        std::println("<p>the second:</p>");
+        if (!print_table<symetric_group>(vec2, {.places = 3}))
+            HTML_error = true;
+
+        auto vec3 = vec2 | std::views::transform(conjugate_by_elm_of_order3) |
+                    std::ranges::to<std::vector>();
+        std::println("<p>the third:</p>");
+        if (!print_table<symetric_group>(vec3, {.places = 3}))
+            HTML_error = true;
+
+        auto conjugate_by_elm_of_order2 =
+            get_conjugator(str_to_perm_or_throw("ACB"));
+
+        auto vec4 = vec3 | std::views::transform(conjugate_by_elm_of_order2) |
+                    std::ranges::to<std::vector>();
+        std::println("<p>the fourth:</p>");
+        if (!print_table<symetric_group>(vec4, {.places = 3}))
             HTML_error = true;
     }
-    if (!p::print_bla_group()) {
+
+    if (!print_bla_group()) {
         HTML_error = true;
+    }
+
+    if (false) {
+        std::println(stderr, "");
+        if (!print_some_sub_groups_of_S4())
+            HTML_error = true;
     }
     std::println(stdout, "</body></html>");
     //print_binary_permutation(10,5); // n over k, binomal coefficient
