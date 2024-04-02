@@ -98,13 +98,6 @@ compose_permutations<group_bla>(two_by_two_matrix a, two_by_two_matrix b) {
     }};
     return ret;
 }
-
-template <>
-std::optional<std::string>
-get_other_representation<group_bla>(two_by_two_matrix m) {
-    return m.to_string();
-}
-
 } // namespace permutations
 
 template <> struct std::formatter<permutations::two_by_two_matrix, char> {
@@ -157,17 +150,27 @@ template <> struct std::formatter<permutations::two_by_two_matrix, char> {
                                  static_cast<int>(m.cells[1][0]),
                                  static_cast<int>(m.cells[1][1]));
         }
-        //if (repr_a && repr_b) {
-        //    out = std::ranges::copy(std::string_view{" - "}, out).out;
-        //}
-        //if (repr_b) {
-        //    auto other_repr_opt =
-        //        get_other_representation<group_bla>(perm_view);
-        //    if (!other_repr_opt.has_value())
-        //        throw PermutationException();
-        //    out = std::ranges::copy(*other_repr_opt, out).out;
-        //}
+        if (repr_a && repr_b) {
+            out = std::ranges::copy(std::string_view{" - "}, out).out;
+        }
+        if (repr_b) {
+            out = std::format_to(out, "{} {}<br/>{} {}",
+                                 static_cast<int>(m.cells[0][0]),
+                                 static_cast<int>(m.cells[0][1]),
+                                 static_cast<int>(m.cells[1][0]),
+                                 static_cast<int>(m.cells[1][1]));
+        }
         return out;
     }
 };
 static_assert(std::formattable<permutations::two_by_two_matrix, char>);
+
+namespace permutations {
+
+template <>
+std::optional<std::string>
+get_other_representation<group_bla>(two_by_two_matrix m) {
+    return std::format("{:b}", m);
+}
+
+} // namespace permutations
