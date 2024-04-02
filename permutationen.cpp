@@ -1233,6 +1233,9 @@ int main() {
             }
         }
     }
+    if (!p::print_bla_group()) {
+        HTML_error = true;
+    }
     std::println(stdout, "</body></html>");
     //print_binary_permutation(10,5); // n over k, binomal coefficient
     //print_ternary_permutation(1,1,5);
