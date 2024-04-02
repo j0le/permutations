@@ -15,6 +15,9 @@
 #include <utility>
 #include <vector>
 
+#include "group-interface.h"
+#include "2by2matrix.h"
+
 namespace permutations {
 
 namespace concepts {
@@ -215,6 +218,12 @@ constexpr std::string Permutation::to_string() const {
     return this->operator PermutationView().to_string();
 }
 
+struct symetric_group{
+    using element_type = Permutation;
+    using element_view_type = PermutationView;
+    std::size_t places{};
+};
+
 std::optional<Permutation> str_to_perm(std::string_view view) {
     std::optional<Permutation> perm(std::in_place, view.size());
     auto span = perm->get_span();
@@ -395,9 +404,10 @@ namespace permutations {
 // Composition of permutations as if they are functions:
 // a ∘ b
 // (a∘b)(i) = a(b(i))
-static std::optional<Permutation>
-compose_permutations(Permutation::readonly_span a,
-                     Permutation::readonly_span b) {
+template<>
+std::optional<typename symetric_group::element_type>
+compose_permutations<symetric_group>(symetric_group::element_view_type a,
+                     symetric_group::element_view_type b) {
     if (a.size() != b.size())
         return std::nullopt;
     std::size_t size = a.size();
@@ -413,15 +423,17 @@ compose_permutations(Permutation::readonly_span a,
     return result;
 }
 
-static std::optional<Permutation>
-compose_permutations(concepts::range_of_PermutationView_likes_c auto &&range) {
-    std::optional<Permutation> opt;
+template <group_config_c group_config_t>
+std::optional<typename group_config_t::element_type>
+compose_permutations(range_of_element_view_likes_c<group_config_t> auto &&range) {
+
+    std::optional<typename group_config_t::element_type> opt;
     for (const auto &perm : range) {
         if (!opt.has_value()) {
             opt.emplace(perm);
             continue;
         }
-        opt = compose_permutations(*opt, perm);
+        opt = compose_permutations<group_config_t>(*opt, perm);
         if (!opt.has_value()) {
             return opt;
         }
@@ -446,19 +458,21 @@ static void print_span(std::span<char> span) {
     std::print("|{}|\n", view);
 }
 
-static Permutation get_identity_permutation(std::size_t places) {
-    return Permutation(places, true);
+template<>
+symetric_group::element_type get_identity<symetric_group>(symetric_group g) {
+    return Permutation(g.places, true);
 }
 
 static std::optional<std::size_t> get_order(Permutation::readonly_span view) {
     const Permutation identity_permutation =
-        get_identity_permutation(view.size());
+        get_identity<symetric_group>(
+            symetric_group{.places = view.size()});
     const PermutationView identity = identity_permutation;
     Permutation perm = identity_permutation;
 
     std::size_t ret = 0;
     do {
-        auto perm_opt = compose_permutations(view, perm);
+        auto perm_opt = compose_permutations<symetric_group>(view, perm);
         if (!perm_opt) {
             return std::nullopt;
         }
@@ -470,12 +484,14 @@ static std::optional<std::size_t> get_order(Permutation::readonly_span view) {
 
 static void print_all_powers(std::FILE *stream,
                              Permutation::readonly_span view) {
-    const auto identity_permutation = get_identity_permutation(view.size());
+    const Permutation identity_permutation =
+        get_identity<symetric_group>(
+            symetric_group{.places = view.size()});
     const PermutationView identity = identity_permutation;
     auto perm = identity_permutation;
 
     do {
-        auto perm_opt = compose_permutations(view, perm);
+        auto perm_opt = compose_permutations<symetric_group>(view, perm);
         if (!perm_opt) {
             std::println(stderr, "error");
             break;
@@ -570,10 +586,12 @@ template <std::integral Integer> Integer fakultät(const Integer numb) {
     return result;
 }
 
-template <concepts::range_of_PermutationView_likes_c R,
-          concepts::uint32_c UInt32>
-[[nodiscard]] static bool print_table(R perms, UInt32 places) {
-    auto print_cell = [](PermutationView perm, std::string_view row,
+template <group_config_c group_config_t,
+          range_of_element_view_likes_c<group_config_t> R>
+[[nodiscard]] static bool print_table(R perms, group_config_t group_config) {
+    using view_t = group_config_t::element_view_type;
+
+    auto print_cell = [](view_t perm, std::string_view row,
                          std::string_view column) -> bool {
         bool is_header = row == "header" || column == "header";
         std::string perm_str = std::format("{}", perm);
@@ -601,11 +619,11 @@ template <concepts::range_of_PermutationView_likes_c R,
         return true;
     };
 
-    auto print_row = [&](PermutationView perm_row,
+    auto print_row = [&](view_t perm_row,
                          bool is_header_row = false) -> bool {
-        for (PermutationView perm_column : perms) {
+        for (view_t perm_column : perms) {
             auto opt =
-                compose_permutations(perm_row.get_readonly_span(), perm_column);
+                compose_permutations<group_config_t>(perm_row.get_readonly_span(), perm_column);
             std::string perm_column_str = perm_column.to_string();
             std::string perm_row_str = perm_row.to_string();
             if (!opt || !print_cell(*opt,
@@ -622,7 +640,7 @@ template <concepts::range_of_PermutationView_likes_c R,
     std::println("<table>");
     // print header of table
     std::print("<thead>\n<tr><th></th>");
-    const auto identity = get_identity_permutation(places);
+    const auto identity = get_identity(group_config);
     if (!print_row(identity, true))
         return false;
     std::println("</thead>");
@@ -672,6 +690,7 @@ template <std::ranges::range R, concepts::uint32_c UInt32>
     assert(std::cmp_greater_equal(perms.size(), 1));
     Permutation perm(perms.size(), '\0');
     Permutation::span all(perm);
+    symetric_group group_config{.places = places};
 
     size_t counter = 0;
     auto permute_table_and_print = [&](PermutationView view) -> bool {
@@ -685,7 +704,7 @@ template <std::ranges::range R, concepts::uint32_c UInt32>
             new_order.push_back(PermutationView{perms[index]});
         }
         std::println("<br/><p>Tabelle {}, {}</p>", counter, view);
-        if (!print_table(new_order, places))
+        if (!print_table(new_order, group_config))
             return false;
         counter++;
         return true;
@@ -718,6 +737,7 @@ static bool compare_by_order(Permutation::readonly_span a,
     }
     Permutation str(places);
     auto all = str.get_span();
+    const symetric_group group_config{.places = places};
 
     std::size_t number_of_permutations = fakultät(static_cast<size_t>(places));
 
@@ -753,10 +773,10 @@ static bool compare_by_order(Permutation::readonly_span a,
         auto vector_of_PermutationViews =
             range_of_PermutationViews | std::ranges::to<std::vector>();
         std::ranges::sort(vector_of_PermutationViews, compare_by_order);
-        if (!print_table(vector_of_PermutationViews, places))
+        if (!print_table<symetric_group>(vector_of_PermutationViews, group_config))
             return false;
         std::println("<br/><p>unsorted:</p>");
-        if (!print_table(range_of_PermutationViews, places))
+        if (!print_table<symetric_group>(range_of_PermutationViews, group_config))
             return false;
     }
 
@@ -818,9 +838,9 @@ set generate_subgroup_from(
             {
                 PermutationView inner_current = vec[jj];
                 products[0] = std::move(
-                    compose_permutations(current, inner_current).value());
+                    compose_permutations<symetric_group>(current, inner_current).value());
                 products[1] = std::move(
-                    compose_permutations(inner_current, current).value());
+                    compose_permutations<symetric_group>(inner_current, current).value());
             }
             //size_t kkk =0;
             for (auto &p : products) {
@@ -911,7 +931,7 @@ static void print_ternary_permutation(std::span<char> all, std::span<char> rest,
 
 void check_expect(PermutationView a, PermutationView b,
                   PermutationView expected) {
-    auto result = compose_permutations(a, b);
+    auto result = compose_permutations<symetric_group>(a, b);
     if (!result)
         throw std::exception();
 
@@ -989,7 +1009,8 @@ int main() {
         std::println(stderr, "\nThis is one variant of the D4 group:");
         auto D4 = generate_and_print_group(generating_elements);
 
-        const p::Permutation identity = p::get_identity_permutation(4);
+        const p::symetric_group group_config{.places = 4};
+        const p::Permutation identity = p::get_identity(group_config);
         p::Permutation transformers[]{
             p::str_to_perm_or_throw("ADBC"),
             p::str_to_perm_or_throw("ACDB"),
@@ -1015,14 +1036,14 @@ int main() {
 
             vecs[i] = D4 | std::views::transform([&](p::PermutationView view) {
                           p::PermutationView term[]{view, trans};
-                          return p::compose_permutations(term).value();
+                          return p::compose_permutations<p::symetric_group>(term).value();
                       }) |
                       std::ranges::to<std::vector>();
 
             std::println(stderr, "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
             print_elements(vecs[i]);
             std::println(stdout, "<br/><p>M{}</p>", i);
-            if (!p::print_table(vecs[i], p::Permutation::uint_t{4u})) {
+            if (!p::print_table(vecs[i], group_config)) {
                 std::println(stderr, "error printing html table");
                 HTML_error = true;
             }
@@ -1032,8 +1053,8 @@ int main() {
 
         // Print HTML table
         std::println(stdout, "<br/><p>sorted by D4</p>");
-        if (!p::print_table(vecs | std::ranges::views::join,
-                            p::Permutation::uint_t{4u})) {
+        if (!p::print_table<p::symetric_group>(vecs | std::ranges::views::join,
+                            group_config)) {
             std::println(stderr, "error printing html table");
             HTML_error = true;
         }
@@ -1055,7 +1076,7 @@ int main() {
             return [t = std::move(t),
                     i = std::move(inverse)](p::PermutationView v) {
                 p::PermutationView term[]{i, v, t};
-                return p::compose_permutations(term).value();
+                return p::compose_permutations<p::symetric_group>(term).value();
             };
         };
 
@@ -1074,7 +1095,7 @@ int main() {
 
             std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>", i,
                          (vec_is_group ? "is a group" : "is not a group"));
-            if (!p::print_table(vec, p::Permutation::uint_t{4u})) {
+            if (!p::print_table<p::symetric_group>(vec, group_config)) {
                 std::println(stderr, "error printing html table");
                 HTML_error = true;
             }
@@ -1164,10 +1185,10 @@ int main() {
         for (const auto &a : D4) {
             for (const auto &b : D4) {
                 auto intermediate_result =
-                    p::compose_permutations(a, b).value();
+                    p::compose_permutations<p::symetric_group>(a, b).value();
                 auto A = conjugate_by_t0(a);
                 auto B = conjugate_by_t0(b);
-                auto R1 = p::compose_permutations(A, B).value();
+                auto R1 = p::compose_permutations<p::symetric_group>(A, B).value();
                 auto R2 = conjugate_by_t0(intermediate_result);
                 if (p::PermutationView{R1} == p::PermutationView{R2})
                     std::println(stderr, "same");
