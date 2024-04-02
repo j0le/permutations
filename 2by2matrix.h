@@ -26,8 +26,11 @@ struct two_by_two_matrix{
         return true;
     }
     constexpr std::string to_string() const {
-        return std::format("M{}{}{}{}", cells[0][0], cells[0][1], cells[1][0],
-                           cells[1][1]);
+        return std::format("M{}{}{}{}",
+                           static_cast<int>(cells[0][0]),
+                           static_cast<int>(cells[0][1]),
+                           static_cast<int>(cells[1][0]),
+                           static_cast<int>(cells[1][1]));
     };
 };
 
@@ -148,8 +151,11 @@ template <> struct std::formatter<permutations::two_by_two_matrix, char> {
         auto out = ctx.out();
 
         if (repr_a) {
-            out = std::format_to(out, "M{}{}{}{}", m.cells[0][0], m.cells[0][1],
-                                 m.cells[1][0], m.cells[1][1]);
+            out = std::format_to(out, "M{}{}{}{}",
+                                 static_cast<int>(m.cells[0][0]),
+                                 static_cast<int>(m.cells[0][1]),
+                                 static_cast<int>(m.cells[1][0]),
+                                 static_cast<int>(m.cells[1][1]));
         }
         //if (repr_a && repr_b) {
         //    out = std::ranges::copy(std::string_view{" - "}, out).out;
