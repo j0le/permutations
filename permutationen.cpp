@@ -985,7 +985,10 @@ bool print_bla_group() {
 
     group_set<group_bla> set =
         generate_subgroup_from<group_bla>(generating_elements);
-    return print_table<group_bla>(set, group_bla{});
+
+    std::vector vec = set | std::ranges::to<std::vector>();
+    std::ranges::sort(vec, compare_by_order<group_bla>);
+    return print_table<group_bla>(vec, group_bla{});
 }
 
 bool print_some_sub_groups_of_S4() {
