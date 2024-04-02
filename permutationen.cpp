@@ -987,23 +987,10 @@ bool print_bla_group() {
     return print_table<group_bla>(set, group_bla{});
 }
 
-} // namespace permutations
+bool print_some_sub_groups_of_S4() {
+    namespace p = ::permutations;
 
-int main() {
-    namespace p = permutations;
-
-    p::check_expect("ABC", "ABC", "ABC");
-    p::check_expect("ABC", "CAB", "CAB");
-    p::check_expect("CAB", "ABC", "CAB");
-    p::check_expect(           p::str_to_perm_or_throw("CAB"),
-                    p::inverse(p::str_to_perm_or_throw("CAB")),
-                               p::str_to_perm_or_throw("ABC"));
-
-    std::string murks = "BCA";
-    auto opt = p::str_to_perm(murks);
-    if (!opt)
-        throw std::exception();
-    p::print_all_powers(stderr, *opt);
+    bool HTML_error = false;
 
     auto print_elements = [](auto &&range) {
         std::println(stderr, "---------------");
@@ -1022,6 +1009,230 @@ int main() {
         return group;
     };
 
+    auto rotation = p::str_to_perm_or_throw("BCDA");
+    auto mirror = p::str_to_perm_or_throw("BADC");
+    std::vector<p::PermutationView> generating_elements{};
+    generating_elements.push_back(rotation);
+    generating_elements.push_back(mirror);
+
+    std::println(stderr,
+                 "These are the generating elements:\n"
+                 "- rotation: {:ab}, and\n"
+                 "- mirror:   {:ab}",
+                 rotation, mirror);
+
+    std::println(stderr, "\nThis is one variant of the D4 group:");
+    auto D4 = generate_and_print_group(generating_elements);
+
+    const p::symetric_group group_config{.places = 4};
+    const p::Permutation identity = p::get_identity(group_config);
+    p::Permutation transformers[]{
+        p::str_to_perm_or_throw("ADBC"),
+        p::str_to_perm_or_throw("ACDB"),
+        identity,
+    };
+    static constexpr const std::size_t number_of_transformers =
+        sizeof(transformers) / sizeof(transformers[0]);
+    static_assert(number_of_transformers == 3z);
+
+    for (size_t i = 1; auto &t : transformers) {
+        std::println(stderr, "transformer t{} is: {:ab} {}", i++, t,
+                     (p::PermutationView{t} == identity ? "  (identity)" : ""));
+    }
+
+    std::println(stderr, "\nLet us transform the group with it:");
+
+    std::vector<p::Permutation> vecs[number_of_transformers]{};
+    p::set collection;
+
+    for (std::size_t i = 0;
+         p::concepts::PermutationView_like_c auto &trans : transformers) {
+
+        vecs[i] =
+            D4 | std::views::transform([&](p::PermutationView view) {
+                p::PermutationView term[]{view, trans};
+                return p::compose_permutations<p::symetric_group>(term).value();
+            }) |
+            std::ranges::to<std::vector>();
+
+        std::println(stderr, "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
+        print_elements(vecs[i]);
+        std::println(stdout, "<br/><p>M{}</p>", i);
+        if (!p::print_table(vecs[i], group_config)) {
+            std::println(stderr, "error printing html table");
+            HTML_error = true;
+        }
+        collection.insert_range(vecs[i]);
+        i++;
+    }
+
+    // Print HTML table
+    std::println(stdout, "<br/><p>sorted by D4</p>");
+    if (!p::print_table<p::symetric_group>(vecs | std::ranges::views::join,
+                                           group_config)) {
+        std::println(stderr, "error printing html table");
+        HTML_error = true;
+    }
+
+    // vereinigung disjunkter Mengen: ⊍
+    // Vereinigung von Mengen: ∪
+    std::println(stderr, "M0 ⊍ M1 ⊍ M2 = S4:");
+    print_elements(collection);
+    if (std::cmp_not_equal(collection.size(), p::fakultät(4z))) {
+        std::println(stderr, "collection is not the whole S4 group");
+        return 1;
+    }
+
+    std::println(stderr,
+                 "\nLet us conjugate the group D4 with the transformers:");
+
+    auto get_conjugator = [](p::Permutation t) {
+        p::Permutation inverse = p::inverse(t);
+        return
+            [t = std::move(t), i = std::move(inverse)](p::PermutationView v) {
+                p::PermutationView term[]{i, v, t};
+                return p::compose_permutations<p::symetric_group>(term).value();
+            };
+    };
+
+    for (size_t i = 0;
+         p::concepts::PermutationView_like_c auto &trans : transformers) {
+        const auto conjugate = get_conjugator(trans);
+
+        auto vec = D4 | std::views::transform(conjugate) |
+                   std::ranges::to<std::vector>();
+        auto group = p::generate_subgroup_from<p::symetric_group>(vec);
+        bool vec_is_group = vec.size() == group.size();
+
+        std::println(stderr, "t{0}^-1 * D4 * t{0}  ({1}):", i,
+                     (vec_is_group ? "is a group" : "is not a group"));
+        print_elements(vec);
+
+        std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>", i,
+                     (vec_is_group ? "is a group" : "is not a group"));
+        if (!p::print_table<p::symetric_group>(vec, group_config)) {
+            std::println(stderr, "error printing html table");
+            HTML_error = true;
+        }
+        i++;
+    }
+
+    std::println(stderr, "\nNow we only transform the generators, and "
+                         "generate a new group of it.");
+
+    struct group_with_transformer {
+        p::set group{};
+        p::Permutation transformer{};
+    };
+
+    auto cmp_groups = [](const group_with_transformer &a,
+                         const group_with_transformer &b) {
+        const auto &ga = a.group;
+        const auto &gb = b.group;
+
+        if (ga.size() < gb.size())
+            return true;
+        else if (ga.size() > gb.size())
+            return false;
+
+        assert(ga.size() == gb.size());
+        std::size_t size = ga.size();
+        auto a_end = ga.end();
+        auto b_end = gb.end();
+        for (auto ia = ga.begin(), ib = gb.begin(); ia != a_end && ib != b_end;
+             ia++, ib++) {
+            bool less = p::cmp_less(*ia, *ib);
+            if (less)
+                return true;
+            if (static_cast<p::PermutationView>(*ia) ==
+                static_cast<p::PermutationView>(*ib))
+                continue;
+            return false;
+        }
+        return false;
+    };
+
+    std::multiset<group_with_transformer, decltype(cmp_groups)> groups{};
+
+    for (const auto &t : vecs | std::ranges::views::join) {
+        std::println(stderr, "Conjugate with transformer: {:ab}", t);
+
+        const auto conjugate = get_conjugator(t);
+
+        auto new_generators = generating_elements |
+                              std::views::transform(conjugate) |
+                              std::ranges::to<std::vector>();
+        std::println(stderr, "The new generators are:");
+        for (auto &g : new_generators) {
+            std::println(stderr, "- {:ab}", g);
+        }
+        std::println(stderr, "The group generated by them is:");
+        groups.insert(group_with_transformer{
+            .group = generate_and_print_group(new_generators),
+            .transformer = t});
+    }
+
+    std::println(stderr, "\nThe groups sorted:");
+    const group_with_transformer *previous = nullptr;
+    for (const group_with_transformer &g_with_t : groups) {
+        bool equal_to_previous = false;
+        if (previous != nullptr) {
+            if (cmp_groups(*previous, g_with_t)) {
+                std::println(stderr, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+                                     "<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            } else if (cmp_groups(g_with_t, *previous)) {
+                std::println(stderr, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+                                     ">>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+            } else {
+                std::print(stderr, "= ");
+                equal_to_previous = true;
+            }
+        }
+        std::println(stderr, "Conjugated with transformer: {:ab}",
+                     g_with_t.transformer);
+        if (!equal_to_previous) {
+            print_elements(g_with_t.group);
+        }
+        previous = &g_with_t;
+    }
+    auto conjugate_by_t0 = get_conjugator(transformers[0]);
+    // Check that conjugation is a homomorphism
+    for (const auto &a : D4) {
+        for (const auto &b : D4) {
+            auto intermediate_result =
+                p::compose_permutations<p::symetric_group>(a, b).value();
+            auto A = conjugate_by_t0(a);
+            auto B = conjugate_by_t0(b);
+            auto R1 = p::compose_permutations<p::symetric_group>(A, B).value();
+            auto R2 = conjugate_by_t0(intermediate_result);
+            if (p::PermutationView{R1} == p::PermutationView{R2})
+                std::println(stderr, "same");
+            else
+                std::println(stderr, "not same");
+        }
+    }
+
+    return !HTML_error;
+}
+
+} // namespace permutations
+
+int main() {
+    namespace p = permutations;
+
+    p::check_expect("ABC", "ABC", "ABC");
+    p::check_expect("ABC", "CAB", "CAB");
+    p::check_expect("CAB", "ABC", "CAB");
+    p::check_expect(           p::str_to_perm_or_throw("CAB"),
+                    p::inverse(p::str_to_perm_or_throw("CAB")),
+                               p::str_to_perm_or_throw("ABC"));
+
+    std::string murks = "BCA";
+    auto opt = p::str_to_perm(murks);
+    if (!opt)
+        throw std::exception();
+    p::print_all_powers(stderr, *opt);
+
     bool HTML_error = false;
     if (!p::print_group_table(3, false, true)) {
         std::print(stderr, "error");
@@ -1030,208 +1241,8 @@ int main() {
 
     std::println(stderr, "");
     if (false) {
-        auto rotation = p::str_to_perm_or_throw("BCDA");
-        auto mirror = p::str_to_perm_or_throw("BADC");
-        std::vector<p::PermutationView> generating_elements{};
-        generating_elements.push_back(rotation);
-        generating_elements.push_back(mirror);
-
-        std::println(stderr,
-                     "These are the generating elements:\n"
-                     "- rotation: {:ab}, and\n"
-                     "- mirror:   {:ab}",
-                     rotation, mirror);
-
-        std::println(stderr, "\nThis is one variant of the D4 group:");
-        auto D4 = generate_and_print_group(generating_elements);
-
-        const p::symetric_group group_config{.places = 4};
-        const p::Permutation identity = p::get_identity(group_config);
-        p::Permutation transformers[]{
-            p::str_to_perm_or_throw("ADBC"),
-            p::str_to_perm_or_throw("ACDB"),
-            identity,
-        };
-        static constexpr const std::size_t number_of_transformers =
-            sizeof(transformers) / sizeof(transformers[0]);
-        static_assert(number_of_transformers == 3z);
-
-        for (size_t i = 1; auto &t : transformers) {
-            std::println(
-                stderr, "transformer t{} is: {:ab} {}", i++, t,
-                (p::PermutationView{t} == identity ? "  (identity)" : ""));
-        }
-
-        std::println(stderr, "\nLet us transform the group with it:");
-
-        std::vector<p::Permutation> vecs[number_of_transformers]{};
-        p::set collection;
-
-        for (std::size_t i = 0;
-             p::concepts::PermutationView_like_c auto &trans : transformers) {
-
-            vecs[i] = D4 | std::views::transform([&](p::PermutationView view) {
-                          p::PermutationView term[]{view, trans};
-                          return p::compose_permutations<p::symetric_group>(term).value();
-                      }) |
-                      std::ranges::to<std::vector>();
-
-            std::println(stderr, "M{0} := {{ x | d ∈ D4, x = d * t{0} }}:", i);
-            print_elements(vecs[i]);
-            std::println(stdout, "<br/><p>M{}</p>", i);
-            if (!p::print_table(vecs[i], group_config)) {
-                std::println(stderr, "error printing html table");
-                HTML_error = true;
-            }
-            collection.insert_range(vecs[i]);
-            i++;
-        }
-
-        // Print HTML table
-        std::println(stdout, "<br/><p>sorted by D4</p>");
-        if (!p::print_table<p::symetric_group>(vecs | std::ranges::views::join,
-                            group_config)) {
-            std::println(stderr, "error printing html table");
+        if (!p::print_some_sub_groups_of_S4())
             HTML_error = true;
-        }
-
-        // vereinigung disjunkter Mengen: ⊍
-        // Vereinigung von Mengen: ∪
-        std::println(stderr, "M0 ⊍ M1 ⊍ M2 = S4:");
-        print_elements(collection);
-        if (std::cmp_not_equal(collection.size(), p::fakultät(4z))) {
-            std::println(stderr, "collection is not the whole S4 group");
-            return 1;
-        }
-
-        std::println(stderr,
-                     "\nLet us conjugate the group D4 with the transformers:");
-
-        auto get_conjugator = [](p::Permutation t) {
-            p::Permutation inverse = p::inverse(t);
-            return [t = std::move(t),
-                    i = std::move(inverse)](p::PermutationView v) {
-                p::PermutationView term[]{i, v, t};
-                return p::compose_permutations<p::symetric_group>(term).value();
-            };
-        };
-
-        for (size_t i = 0;
-             p::concepts::PermutationView_like_c auto &trans : transformers) {
-            const auto conjugate = get_conjugator(trans);
-
-            auto vec = D4 | std::views::transform(conjugate) |
-                       std::ranges::to<std::vector>();
-            auto group = p::generate_subgroup_from<p::symetric_group>(vec);
-            bool vec_is_group = vec.size() == group.size();
-
-            std::println(stderr, "t{0}^-1 * D4 * t{0}  ({1}):", i,
-                         (vec_is_group ? "is a group" : "is not a group"));
-            print_elements(vec);
-
-            std::println(stdout, "<br/><p>t{0}^-1 * D4 * t{0}  ({1}):</p>", i,
-                         (vec_is_group ? "is a group" : "is not a group"));
-            if (!p::print_table<p::symetric_group>(vec, group_config)) {
-                std::println(stderr, "error printing html table");
-                HTML_error = true;
-            }
-            i++;
-        }
-
-        std::println(stderr, "\nNow we only transform the generators, and "
-                             "generate a new group of it.");
-
-        struct group_with_transformer {
-            p::set group{};
-            p::Permutation transformer{};
-        };
-
-        auto cmp_groups = [](const group_with_transformer &a,
-                             const group_with_transformer &b) {
-            const auto &ga = a.group;
-            const auto &gb = b.group;
-
-            if (ga.size() < gb.size())
-                return true;
-            else if (ga.size() > gb.size())
-                return false;
-
-            assert(ga.size() == gb.size());
-            std::size_t size = ga.size();
-            auto a_end = ga.end();
-            auto b_end = gb.end();
-            for (auto ia = ga.begin(), ib = gb.begin();
-                 ia != a_end && ib != b_end; ia++, ib++) {
-                bool less = p::cmp_less(*ia, *ib);
-                if (less)
-                    return true;
-                if (static_cast<p::PermutationView>(*ia) ==
-                    static_cast<p::PermutationView>(*ib))
-                    continue;
-                return false;
-            }
-            return false;
-        };
-
-        std::multiset<group_with_transformer, decltype(cmp_groups)> groups{};
-
-        for (const auto &t : vecs | std::ranges::views::join) {
-            std::println(stderr, "Conjugate with transformer: {:ab}", t);
-
-            const auto conjugate = get_conjugator(t);
-
-            auto new_generators = generating_elements |
-                                  std::views::transform(conjugate) |
-                                  std::ranges::to<std::vector>();
-            std::println(stderr, "The new generators are:");
-            for (auto &g : new_generators) {
-                std::println(stderr, "- {:ab}", g);
-            }
-            std::println(stderr, "The group generated by them is:");
-            groups.insert(group_with_transformer{
-                .group = generate_and_print_group(new_generators),
-                .transformer = t});
-        }
-
-        std::println(stderr, "\nThe groups sorted:");
-        const group_with_transformer *previous = nullptr;
-        for (const group_with_transformer &g_with_t : groups) {
-            bool equal_to_previous = false;
-            if (previous != nullptr) {
-                if (cmp_groups(*previous, g_with_t)) {
-                    std::println(stderr, "<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-                                         "<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-                } else if (cmp_groups(g_with_t, *previous)) {
-                    std::println(stderr, ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-                                         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-                } else {
-                    std::print(stderr, "= ");
-                    equal_to_previous = true;
-                }
-            }
-            std::println(stderr, "Conjugated with transformer: {:ab}",
-                         g_with_t.transformer);
-            if (!equal_to_previous) {
-                print_elements(g_with_t.group);
-            }
-            previous = &g_with_t;
-        }
-        auto conjugate_by_t0 = get_conjugator(transformers[0]);
-        // Check that conjugation is a homomorphism
-        for (const auto &a : D4) {
-            for (const auto &b : D4) {
-                auto intermediate_result =
-                    p::compose_permutations<p::symetric_group>(a, b).value();
-                auto A = conjugate_by_t0(a);
-                auto B = conjugate_by_t0(b);
-                auto R1 = p::compose_permutations<p::symetric_group>(A, B).value();
-                auto R2 = conjugate_by_t0(intermediate_result);
-                if (p::PermutationView{R1} == p::PermutationView{R2})
-                    std::println(stderr, "same");
-                else
-                    std::println(stderr, "not same");
-            }
-        }
     }
     if (!p::print_bla_group()) {
         HTML_error = true;
