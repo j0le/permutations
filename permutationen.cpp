@@ -1023,13 +1023,13 @@ int main() {
     };
 
     bool HTML_error = false;
-    if (!p::print_group_table(4, false, true)) {
+    if (!p::print_group_table(3, false, true)) {
         std::print(stderr, "error");
         HTML_error = true;
     }
 
     std::println(stderr, "");
-    {
+    if (false) {
         auto rotation = p::str_to_perm_or_throw("BCDA");
         auto mirror = p::str_to_perm_or_throw("BADC");
         std::vector<p::PermutationView> generating_elements{};
