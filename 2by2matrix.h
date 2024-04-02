@@ -77,7 +77,7 @@ compose_permutations<group_bla>(two_by_two_matrix a, two_by_two_matrix b) {
 
 template <>
 std::optional<std::string>
-get_other_permutation_representation<group_bla>(two_by_two_matrix m) {
+get_other_representation<group_bla>(two_by_two_matrix m) {
     return m.to_string();
 }
 
@@ -135,7 +135,7 @@ template <> struct std::formatter<permutations::two_by_two_matrix, char> {
         //}
         //if (repr_b) {
         //    auto other_repr_opt =
-        //        get_other_permutation_representation<group_bla>(perm_view);
+        //        get_other_representation<group_bla>(perm_view);
         //    if (!other_repr_opt.has_value())
         //        throw PermutationException();
         //    out = std::ranges::copy(*other_repr_opt, out).out;

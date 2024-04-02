@@ -36,8 +36,8 @@ compose_permutations(typename group_config_t::element_view_type a,
                      typename group_config_t::element_view_type b);
 
 template <group_config_c group_config_t>
-std::optional<std::string> get_other_permutation_representation(
-    typename group_config_t::element_view_type);
+std::optional<std::string>
+    get_other_representation(typename group_config_t::element_view_type);
 
 template <group_config_c group_config_t>
 using group_set = std::set<typename group_config_t::element_type,

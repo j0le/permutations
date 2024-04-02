@@ -305,8 +305,8 @@ concept range_of_PermutationView_likes_c =
 } //namespace concepts
 
 template <>
-std::optional<std::string> get_other_permutation_representation<symetric_group>(
-    const PermutationView span) {
+std::optional<std::string>
+get_other_representation<symetric_group>(const PermutationView span) {
     // Print permutations like in the book "Elementar(st)e Gruppentheorie"
     // by Tobias Glosauer,
     // Chapter 3 "Gruppen ohne Ende",
@@ -410,7 +410,7 @@ struct std::formatter<permutations::PermutationView, char> {
         }
         if (repr_b) {
             auto other_repr_opt =
-                get_other_permutation_representation<symetric_group>(perm_view);
+                get_other_representation<symetric_group>(perm_view);
             if (!other_repr_opt.has_value())
                 throw PermutationException();
             out = std::ranges::copy(*other_repr_opt, out).out;
@@ -635,8 +635,7 @@ template <group_config_c group_config_t,
         bool is_header = row == "header" || column == "header";
         std::string perm_str = std::format("{}", perm);
         const auto &hover_text = perm_str;
-        auto display_text_opt =
-            get_other_permutation_representation<group_config_t>(perm);
+        auto display_text_opt = get_other_representation<group_config_t>(perm);
         if (!display_text_opt) {
             std::println(stderr, "this is the fucked up thing: {}", perm);
             return false;
