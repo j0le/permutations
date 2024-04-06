@@ -1237,7 +1237,7 @@ int main() {
     print_all_powers(stderr, *opt);
 
     bool HTML_error = false;
-    if (!print_group_table(3, false, true)) {
+    if (!print_group_table(3, false, false)) {
         std::print(stderr, "error");
         HTML_error = true;
     }
