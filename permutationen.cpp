@@ -646,7 +646,7 @@ template <group_config_c group_config_t,
         }
         static constexpr const char format[] =
             "<t{5} "
-            R"~(class="{1}{2} row_{6} column_{7}" )~"
+            R"~(class="{1}{2} row_{6} column_{7} order_{4}" )~"
             R"~(data-row="{6}" data-column="{7}" data-perm="{1}" )~"
             R"~(title="{3}, order: {4}">)~"
             "{8}{0}"
@@ -701,23 +701,33 @@ template <concepts::range_of_PermutationView_likes_c R,
 [[nodiscard]] static bool print_css(R perms, UInt32 places,
                                     std::size_t number_of_permutations) {
     std::println("<style>");
-    size_t i = 0;
-    bool first = true;
-    for (PermutationView perm : perms) {
-        auto order_opt = get_order<symetric_group>(perm);
-        if (!order_opt) {
-            return false;
+    if constexpr (false) {
+        size_t color = 0;
+        bool first = true;
+        for (PermutationView perm : perms) {
+            auto order_opt = get_order<symetric_group>(perm);
+            if (!order_opt) {
+                return false;
+            }
+            std::println("th.{0}:not(.selected_elm),\n"
+                         "td.{0}:not(.crossed_cell) {{\n"
+                         "    {1}background-color: hsl( {2}deg 75% 75% ){3};\n"
+                         "}}",
+                         perm.to_string(), (first ? "/*" : ""), color,
+                         (first ? "*/" : ""));
+            first = false;
+            color += (360zu / number_of_permutations);
         }
-        std::size_t color_by_order = 360zu * (order_opt.value() - 1zu) / places;
-        std::size_t color = false ? color_by_order : i;
-        std::println("th.{0}:not(.selected_elm),\n"
-                     "td.{0}:not(.crossed_cell) {{\n"
-                     "    {1}background-color: hsl( {2}deg 75% 75% ){3};\n"
-                     "}}",
-                     perm.to_string(), (first ? "/*" : ""), color,
-                     (first ? "*/" : ""));
-        first = false;
-        i += (360 / number_of_permutations);
+    } else {
+        for (size_t order : std::views::iota(1zu) | std::views::take(places)) {
+            std::size_t color_by_order =
+                360zu * (order - 1zu) / static_cast<size_t>(places);
+            std::println("th.order_{0}:not(.selected_elm),\n"
+                         "td.order_{0}:not(.crossed_cell) {{\n"
+                         "    background-color: hsl( {1}deg 75% 75% );\n"
+                         "}}",
+                         order, color_by_order);
+        }
     }
     std::println("</style>");
     std::println(R"(<link rel="stylesheet" href="./style.css" />)");
