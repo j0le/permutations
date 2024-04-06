@@ -232,7 +232,7 @@ inline constexpr auto cmp_less = [](const Permutation &a,
     const auto sa = a.get_readonly_span();
     const auto sb = b.get_readonly_span();
 
-    for (std::size_t i = 0z; i < a.size(); ++i) {
+    for (std::size_t i = 0zu; i < a.size(); ++i) {
         if (sa[i] < sb[i])
             return true;
         else if (sa[i] == sb[i])
@@ -317,7 +317,7 @@ get_other_representation<symetric_group>(const PermutationView span) {
     assert(std::cmp_less_equal(span.size(), max_size));
     //auto found = std::make_unique<bool[]>(view.size());
     std::bitset<max_size> found{};
-    for (std::size_t i = 0z; i < span.size(); ++i) {
+    for (std::size_t i = 0zu; i < span.size(); ++i) {
         if (found.test(i)) {
             continue;
         }
@@ -600,7 +600,7 @@ calc_permutation(std::function<ReturnTypeOfCallBack(PermutationView)> call_back,
 }
 
 template <std::size_t places> [[nodiscard]] bool print_permutation() {
-    const auto max_number_of_digits = 'Z' - 'A' + 1z;
+    const auto max_number_of_digits = 'Z' - 'A' + 1zu;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
     }
@@ -708,7 +708,7 @@ template <concepts::range_of_PermutationView_likes_c R,
         if (!order_opt) {
             return false;
         }
-        std::size_t color_by_order = 360z * (order_opt.value() - 1z) / places;
+        std::size_t color_by_order = 360zu * (order_opt.value() - 1zu) / places;
         std::size_t color = false ? color_by_order : i;
         std::println("th.{0}:not(.selected_elm),\n"
                      "td.{0}:not(.crossed_cell) {{\n"
@@ -771,7 +771,7 @@ bool compare_by_order(typename gc::element_view_type a,
 [[nodiscard]] bool print_group_table(std::uint32_t places,
                                      bool permute_table = false,
                                      bool print_html_end = true) {
-    const auto max_number_of_digits = 'Z' - 'A' + 1z;
+    const auto max_number_of_digits = 'Z' - 'A' + 1zu;
     if (std::cmp_greater(places, max_number_of_digits)) {
         return false;
     }
@@ -893,13 +893,13 @@ static void print_binary_permutation(std::span<char> all, std::span<char> rest,
         return;
     }
     assert(std::cmp_greater_equal(rest.size(), part));
-    if (std::cmp_greater(part, 0z)) {
+    if (std::cmp_greater(part, 0zu)) {
         rest[0] = 'x';
-        print_binary_permutation(all, rest.subspan(1z), part - 1z);
+        print_binary_permutation(all, rest.subspan(1zu), part - 1zu);
     }
     if (std::cmp_greater(rest.size(), part)) {
         rest[0] = '_';
-        print_binary_permutation(all, rest.subspan(1z), part);
+        print_binary_permutation(all, rest.subspan(1zu), part);
     }
 }
 
@@ -922,17 +922,17 @@ static void print_ternary_permutation(std::span<char> all, std::span<char> rest,
         return;
     }
     assert(std::cmp_equal(rest.size(), a + b + c));
-    if (a > 0z) {
+    if (a > 0zu) {
         rest[0] = 'a';
-        print_ternary_permutation(all, rest.subspan(1z), a - 1z, b, c);
+        print_ternary_permutation(all, rest.subspan(1zu), a - 1zu, b, c);
     }
-    if (b > 0z) {
+    if (b > 0zu) {
         rest[0] = 'B';
-        print_ternary_permutation(all, rest.subspan(1z), a, b - 1z, c);
+        print_ternary_permutation(all, rest.subspan(1zu), a, b - 1zu, c);
     }
-    if (c > 0z) {
+    if (c > 0zu) {
         rest[0] = ' ';
-        print_ternary_permutation(all, rest.subspan(1z), a, b, c - 1z);
+        print_ternary_permutation(all, rest.subspan(1zu), a, b, c - 1zu);
     }
 }
 
@@ -1045,7 +1045,7 @@ bool print_some_sub_groups_of_S4() {
     };
     static constexpr const std::size_t number_of_transformers =
         sizeof(transformers) / sizeof(transformers[0]);
-    static_assert(number_of_transformers == 3z);
+    static_assert(number_of_transformers == 3zu);
 
     for (size_t i = 1; auto &t : transformers) {
         std::println(stderr, "transformer t{} is: {:ab} {}", i++, t,
@@ -1090,7 +1090,7 @@ bool print_some_sub_groups_of_S4() {
     // Vereinigung von Mengen: ∪
     std::println(stderr, "M0 ⊍ M1 ⊍ M2 = S4:");
     print_elements(collection);
-    if (std::cmp_not_equal(collection.size(), p::fakultät(4z))) {
+    if (std::cmp_not_equal(collection.size(), p::fakultät(4zu))) {
         std::println(stderr, "collection is not the whole S4 group");
         return 1;
     }
