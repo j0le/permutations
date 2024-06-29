@@ -25,7 +25,7 @@ function handle_click(event){
 
 function handle_hover(event, enter){
     const cell = event.target;
-    let other_color = "grey";
+    let other_color = "white";
     let this_color = "";
     let header_color = "#aa2222";
 
@@ -35,15 +35,29 @@ function handle_hover(event, enter){
         header_color = "";
     }
 
-    for(const row_or_column of ["row", "column"]){
-        const attr = cell.attributes.getNamedItem("data-"+row_or_column);
-        if(attr != null && attr.value != ""){
-            for(const other_cell of document.querySelectorAll("td."+row_or_column+"_" + attr.value+(enter?":not(.crossed_cell)":""))){
-                other_cell.style.backgroundColor = other_color;
+    const highlight_row_and_column = false;
+
+    if(highlight_row_and_column){
+        for(const row_or_column of ["row", "column"]){
+            const attr = cell.attributes.getNamedItem("data-"+row_or_column);
+            if(attr != null && attr.value != ""){
+                for(const other_cell of document.querySelectorAll("td."+row_or_column+"_" + attr.value+(enter?":not(.crossed_cell)":""))){
+                    other_cell.style.backgroundColor = other_color;
+                }
             }
         }
+        cell.style.backgroundColor = this_color;
     }
-    cell.style.backgroundColor = this_color;
+    else{
+        const perm_attr = cell.attributes.getNamedItem("data-perm");
+        if(perm_attr != null && perm_attr.value != ""){
+            let perm = perm_attr.value;
+            for(const cell of document.querySelectorAll("td."+perm)){
+                cell.style.backgroundColor = other_color;
+            }
+
+        }
+    }
 
     const perm_attr = cell.attributes.getNamedItem("data-perm");
     if(perm_attr != null && perm_attr.value != ""){
